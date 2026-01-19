@@ -1,6 +1,16 @@
-# Address Asset Query Tool
+# Onchain Automated Market Maker Trading Toolkit
 
-Query all assets (ETH, ERC20 tokens, NFTs) held by an Ethereum address.
+A comprehensive toolkit for interacting with Uniswap V3 and other onchain Automated Market Makers (AMMs). Query positions, analyze pools, execute trades, and manage liquidity positions programmatically.
+
+## Overview
+
+This toolkit provides a suite of Python scripts for interacting with onchain AMMs, specifically Uniswap V3:
+
+- **Asset Querying**: Query ETH, ERC20 tokens, and NFTs held by any Ethereum address
+- **Position Analysis**: Detailed analysis of Uniswap V3 liquidity positions including fees, impermanent loss, and deposit history
+- **Pool Monitoring**: Real-time price, tick, and fee tier information for Uniswap V3 pools
+- **Liquidity Management**: Add liquidity to Uniswap V3 pools with automatic tick spacing adjustments and slippage protection
+- **Wallet Management**: Generate secure wallets with BIP39 recovery phrases and BIP44 account derivation
 
 ## Setup
 
