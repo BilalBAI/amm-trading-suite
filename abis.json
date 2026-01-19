@@ -1,0 +1,546 @@
+{
+    "erc20": [
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "_owner",
+                    "type": "address"
+                }
+            ],
+            "name": "balanceOf",
+            "outputs": [
+                {
+                    "name": "balance",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "decimals",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint8"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "symbol",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "name",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": false,
+            "inputs": [
+                {
+                    "name": "_spender",
+                    "type": "address"
+                },
+                {
+                    "name": "_value",
+                    "type": "uint256"
+                }
+            ],
+            "name": "approve",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "_owner",
+                    "type": "address"
+                },
+                {
+                    "name": "_spender",
+                    "type": "address"
+                }
+            ],
+            "name": "allowance",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        }
+    ],
+    "erc721": [
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "_owner",
+                    "type": "address"
+                }
+            ],
+            "name": "balanceOf",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "_owner",
+                    "type": "address"
+                },
+                {
+                    "name": "_index",
+                    "type": "uint256"
+                }
+            ],
+            "name": "tokenOfOwnerByIndex",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "symbol",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "name",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "type": "function"
+        }
+    ],
+    "uniswap_v3_nfpm": [
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "owner",
+                    "type": "address"
+                }
+            ],
+            "name": "balanceOf",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "owner",
+                    "type": "address"
+                },
+                {
+                    "name": "index",
+                    "type": "uint256"
+                }
+            ],
+            "name": "tokenOfOwnerByIndex",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "tokenId",
+                    "type": "uint256"
+                }
+            ],
+            "name": "positions",
+            "outputs": [
+                {
+                    "name": "nonce",
+                    "type": "uint96"
+                },
+                {
+                    "name": "operator",
+                    "type": "address"
+                },
+                {
+                    "name": "token0",
+                    "type": "address"
+                },
+                {
+                    "name": "token1",
+                    "type": "address"
+                },
+                {
+                    "name": "fee",
+                    "type": "uint24"
+                },
+                {
+                    "name": "tickLower",
+                    "type": "int24"
+                },
+                {
+                    "name": "tickUpper",
+                    "type": "int24"
+                },
+                {
+                    "name": "liquidity",
+                    "type": "uint128"
+                },
+                {
+                    "name": "feeGrowthInside0LastX128",
+                    "type": "uint256"
+                },
+                {
+                    "name": "feeGrowthInside1LastX128",
+                    "type": "uint256"
+                },
+                {
+                    "name": "tokensOwed0",
+                    "type": "uint128"
+                },
+                {
+                    "name": "tokensOwed1",
+                    "type": "uint128"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": false,
+            "inputs": [
+                {
+                    "components": [
+                        {
+                            "name": "token0",
+                            "type": "address"
+                        },
+                        {
+                            "name": "token1",
+                            "type": "address"
+                        },
+                        {
+                            "name": "fee",
+                            "type": "uint24"
+                        },
+                        {
+                            "name": "tickLower",
+                            "type": "int24"
+                        },
+                        {
+                            "name": "tickUpper",
+                            "type": "int24"
+                        },
+                        {
+                            "name": "amount0Desired",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "amount1Desired",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "amount0Min",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "amount1Min",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "recipient",
+                            "type": "address"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256"
+                        }
+                    ],
+                    "name": "params",
+                    "type": "tuple"
+                }
+            ],
+            "name": "mint",
+            "outputs": [
+                {
+                    "name": "tokenId",
+                    "type": "uint256"
+                },
+                {
+                    "name": "liquidity",
+                    "type": "uint128"
+                },
+                {
+                    "name": "amount0",
+                    "type": "uint256"
+                },
+                {
+                    "name": "amount1",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        }
+    ],
+    "uniswap_v3_factory": [
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "tokenA",
+                    "type": "address"
+                },
+                {
+                    "name": "tokenB",
+                    "type": "address"
+                },
+                {
+                    "name": "fee",
+                    "type": "uint24"
+                }
+            ],
+            "name": "getPool",
+            "outputs": [
+                {
+                    "name": "pool",
+                    "type": "address"
+                }
+            ],
+            "type": "function"
+        }
+    ],
+    "uniswap_v3_pool": [
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "slot0",
+            "outputs": [
+                {
+                    "name": "sqrtPriceX96",
+                    "type": "uint160"
+                },
+                {
+                    "name": "tick",
+                    "type": "int24"
+                },
+                {
+                    "name": "observationIndex",
+                    "type": "uint16"
+                },
+                {
+                    "name": "observationCardinality",
+                    "type": "uint16"
+                },
+                {
+                    "name": "observationCardinalityNext",
+                    "type": "uint16"
+                },
+                {
+                    "name": "feeProtocol",
+                    "type": "uint8"
+                },
+                {
+                    "name": "unlocked",
+                    "type": "bool"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "token0",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "token1",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [
+                {
+                    "name": "tick",
+                    "type": "int24"
+                }
+            ],
+            "name": "ticks",
+            "outputs": [
+                {
+                    "name": "liquidityGross",
+                    "type": "uint128"
+                },
+                {
+                    "name": "liquidityNet",
+                    "type": "int128"
+                },
+                {
+                    "name": "feeGrowthOutside0X128",
+                    "type": "uint256"
+                },
+                {
+                    "name": "feeGrowthOutside1X128",
+                    "type": "uint256"
+                },
+                {
+                    "name": "tickCumulativeOutside",
+                    "type": "int56"
+                },
+                {
+                    "name": "secondsPerLiquidityOutsideX128",
+                    "type": "uint160"
+                },
+                {
+                    "name": "secondsOutside",
+                    "type": "uint32"
+                },
+                {
+                    "name": "initialized",
+                    "type": "bool"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "feeGrowthGlobal0X128",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "feeGrowthGlobal1X128",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "type": "function"
+        }
+    ],
+    "mintEvent": {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "name": "amount0",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "name": "amount1",
+                "type": "uint256"
+            }
+        ],
+        "name": "Mint",
+        "type": "event"
+    },
+    "increaseLiquidityEvent": {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "name": "liquidity",
+                "type": "uint128"
+            },
+            {
+                "indexed": false,
+                "name": "amount0",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "name": "amount1",
+                "type": "uint256"
+            }
+        ],
+        "name": "IncreaseLiquidity",
+        "type": "event"
+    }
+}
