@@ -77,16 +77,16 @@ python query_univ3_pools.py
 
 ### Add liquidity to Uniswap V3 pool:
 ```bash
-python univ3_add_liq.py <token0> <token1> <fee> <tick_lower> <tick_upper> <amount0> <amount1> [slippage]
+python exe_univ3_add_liq.py <token0> <token1> <fee> <tick_lower> <tick_upper> <amount0> <amount1> [slippage]
 ```
 
 **Example:**
 ```bash
 # Add liquidity to WETH/USDT pool with 0.3% fee
-python univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300
+python exe_univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300
 
 # With custom slippage (1%)
-python univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300 1.0
+python exe_univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300 1.0
 ```
 
 **Note:** Requires `wallet.env` file with `PRIVATE_KEY` for signing transactions.
@@ -143,7 +143,7 @@ Generates a new Ethereum wallet:
 
 **⚠️ Security Warning:** Never share your mnemonic or private keys!
 
-### univ3_add_liq.py
+### exe_univ3_add_liq.py
 Adds liquidity to a Uniswap V3 pool:
 1. Supports token symbols (WETH, USDT, etc.) or addresses
 2. Automatically checks token balances
@@ -193,7 +193,7 @@ Adds liquidity to a Uniswap V3 pool:
 - ✅ Private key and address generation
 - ✅ Secure JSON export
 
-### univ3_add_liq.py
+### exe_univ3_add_liq.py
 - ✅ Token symbol or address support
 - ✅ Automatic balance checking
 - ✅ Token approval handling
