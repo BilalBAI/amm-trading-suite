@@ -116,6 +116,23 @@ python exe_univ3_remove_liq.py 1157630 100 --collect-fees --burn
 python exe_univ3_remove_liq.py 1157630 25
 ```
 
+### Migrate liquidity to a new tick range:
+```bash
+python exe_univ3_migrate_liq.py <token_id> <tick_lower> <tick_upper> [--percentage] [--no-collect-fees] [--burn-old]
+```
+
+**Example:**
+```bash
+# Migrate 100% of liquidity to a new tick range (full range)
+python exe_univ3_migrate_liq.py 1157630 -887220 887220
+
+# Migrate 50% of liquidity to a new range
+python exe_univ3_migrate_liq.py 1157630 -887220 887220 --percentage 50
+
+# Migrate and burn old position (only when migrating 100%)
+python exe_univ3_migrate_liq.py 1157630 -887220 887220 --burn-old
+```
+
 **Note:** Requires `wallet.env` file with `PRIVATE_KEY` for signing transactions.
 
 ### Examples
@@ -207,6 +224,26 @@ Removes liquidity from a Uniswap V3 position:
 - `--collect-fees`: Collect accumulated fees and tokens after removal
 - `--burn`: Burn the position NFT (only valid when removing 100% liquidity)
 
+### exe_univ3_migrate_liq.py
+Migrates liquidity from one tick range to another within the same pool:
+1. Fetches current position information
+2. Optionally collects fees from old position
+3. Removes specified percentage of liquidity from old position
+4. Collects tokens from removed liquidity
+5. Creates new position with new tick range using collected tokens
+6. Optionally burns old position NFT (when migrating 100%)
+
+**Required:**
+- `wallet.env` file with `PRIVATE_KEY`
+- Ownership of the position NFT
+- Valid position with liquidity > 0
+
+**Options:**
+- `--percentage`: Percentage of liquidity to migrate (default: 100)
+- `--no-collect-fees`: Skip fee collection before migration (default: collect fees)
+- `--burn-old`: Burn old position NFT after migration (only when migrating 100%)
+- `--slippage`: Slippage tolerance percentage (default: 0.5)
+
 ## Features
 
 ### query_positions.py
@@ -255,6 +292,15 @@ Removes liquidity from a Uniswap V3 position:
 - ✅ Position burning support
 - ✅ Gas estimation and cost display
 - ✅ Transaction status tracking
+
+### exe_univ3_migrate_liq.py
+- ✅ Automatic liquidity migration workflow
+- ✅ Fee collection from old position
+- ✅ Percentage-based migration support
+- ✅ Automatic tick spacing adjustment
+- ✅ New position creation with migrated tokens
+- ✅ Old position management (optional burning)
+- ✅ Gas estimation and transaction tracking
 
 ## Shared Configuration
 
