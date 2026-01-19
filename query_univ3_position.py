@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Query detailed information about a Uniswap V3 position by token ID
-Usage: python query_uniswap_v3.py <token_id>
+Usage: python query_univ3_position.py <token_id>
 """
 
 import sys
@@ -453,8 +453,8 @@ class UniswapV3PositionQuery:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python query_uniswap_v3.py <token_id>")
-        print("Example: python query_uniswap_v3.py 1157630")
+        print("Usage: python query_univ3_position.py <token_id>")
+        print("Example: python query_univ3_position.py 1157630")
         sys.exit(1)
 
     token_id = sys.argv[1]
@@ -467,7 +467,7 @@ def main():
         results_dir = os.path.join(os.path.dirname(__file__), 'results')
         os.makedirs(results_dir, exist_ok=True)
         output_file = os.path.join(
-            results_dir, f"position_univ3_{token_id}.json")
+            results_dir, f"univ3_position_{token_id}.json")
         with open(output_file, 'w') as f:
             json.dump(result, f, indent=2)
 

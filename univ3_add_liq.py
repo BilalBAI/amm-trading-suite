@@ -322,7 +322,7 @@ class UniswapV3LiquidityAdder:
                 print(
                     f"💰 Amount 1 used: {actual_amount1 / (10 ** token1_info['decimals']):.6f} {token1_info['symbol']}")
                 print(
-                    f"\n📊 View position: python query_uniswap_v3.py {token_id}")
+                    f"\n📊 View position: python query_univ3_position.py {token_id}")
             else:
                 print("⚠️  Warning: Could not parse Mint event from receipt")
 

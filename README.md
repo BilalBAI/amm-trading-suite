@@ -56,12 +56,23 @@ python query_positions.py <ethereum_address>
 
 ### Query Uniswap V3 position details:
 ```bash
-python query_uniswap_v3.py <token_id>
+python query_univ3_position.py <token_id>
 ```
 
 ### Generate a new wallet:
 ```bash
 python generate_wallet.py
+```
+
+### Query Uniswap V3 pool information:
+```bash
+python query_univ3_pools.py
+```
+
+**Example:**
+```bash
+# Query all pools defined in config.json
+python query_univ3_pools.py
 ```
 
 ### Add liquidity to Uniswap V3 pool:
@@ -90,7 +101,7 @@ source venv/bin/activate
 python query_positions.py 0x5bd19Ea9E14205Bce413994D2640E4e9fb204DD3
 
 # Query detailed Uniswap V3 position information
-python query_uniswap_v3.py 1157630
+python query_univ3_position.py 1157630
 
 # Generate a new wallet with 12-word recovery phrase
 python generate_wallet.py
@@ -106,14 +117,22 @@ Queries all assets for an Ethereum address:
 4. Other NFTs (via Transfer events, last ~10,000 blocks)
 5. Saves results to: `assets_<address>.json`
 
-### query_uniswap_v3.py
+### query_univ3_position.py
 Queries detailed information for a Uniswap V3 position:
 1. Position metadata (tokens, fee tier, tick range, liquidity)
 2. Current price and amounts
 3. Accumulated fees
 4. Impermanent loss calculation
 5. Deposit history
-6. Saves results to: `results/position_univ3_<token_id>.json`
+6. Saves results to: `results/univ3_position_<token_id>.json`
+
+### query_univ3_pools.py
+Queries information for Uniswap V3 pools:
+1. Current tick and price
+2. Token pair information
+3. Fee tier detection
+4. Human-readable prices (both directions)
+5. Saves results to: `results/univ3_pools.json`
 
 ### generate_wallet.py
 Generates a new Ethereum wallet:
@@ -152,13 +171,21 @@ Adds liquidity to a Uniswap V3 pool:
 - ✅ NFT detection via Transfer events
 - ✅ JSON export of all results
 
-### query_uniswap_v3.py
+### query_univ3_position.py
 - ✅ Complete position details
 - ✅ Current token amounts and value
 - ✅ Accumulated fees calculation
 - ✅ Impermanent loss calculation
 - ✅ Deposit history with timestamps
 - ✅ JSON export matching standard format
+
+### query_univ3_pools.py
+- ✅ Current tick and price queries
+- ✅ Automatic fee tier detection
+- ✅ Token pair information
+- ✅ Human-readable price calculations
+- ✅ Summary table display
+- ✅ JSON export
 
 ### generate_wallet.py
 - ✅ 12-word BIP39 mnemonic generation
