@@ -99,6 +99,23 @@ python exe_univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300
 python exe_univ3_add_liq.py WETH USDT 3000 -887220 887220 0.1 300 1.0
 ```
 
+### Remove liquidity from Uniswap V3 position:
+```bash
+python exe_univ3_remove_liq.py <token_id> <liquidity_percentage> [--collect-fees] [--burn]
+```
+
+**Example:**
+```bash
+# Remove 50% of liquidity and collect fees
+python exe_univ3_remove_liq.py 1157630 50 --collect-fees
+
+# Remove 100% of liquidity, collect fees, and burn the position
+python exe_univ3_remove_liq.py 1157630 100 --collect-fees --burn
+
+# Remove 25% without collecting fees
+python exe_univ3_remove_liq.py 1157630 25
+```
+
 **Note:** Requires `wallet.env` file with `PRIVATE_KEY` for signing transactions.
 
 ### Examples
@@ -172,6 +189,24 @@ Adds liquidity to a Uniswap V3 pool:
 - 3000 = 0.3%
 - 10000 = 1%
 
+### exe_univ3_remove_liq.py
+Removes liquidity from a Uniswap V3 position:
+1. Fetches position information (current liquidity, tokens, fees)
+2. Removes specified percentage of liquidity (0-100%)
+3. Optional fee collection after removing liquidity
+4. Optional position burning (when removing 100% liquidity)
+5. Ownership verification before removal
+6. Displays amounts received
+
+**Required:**
+- `wallet.env` file with `PRIVATE_KEY`
+- Ownership of the position NFT
+- Valid position with liquidity > 0
+
+**Options:**
+- `--collect-fees`: Collect accumulated fees and tokens after removal
+- `--burn`: Burn the position NFT (only valid when removing 100% liquidity)
+
 ## Features
 
 ### query_positions.py
@@ -211,6 +246,15 @@ Adds liquidity to a Uniswap V3 pool:
 - ✅ Gas estimation and cost display
 - ✅ Transaction status tracking
 - ✅ Position token ID retrieval
+
+### exe_univ3_remove_liq.py
+- ✅ Position information fetching
+- ✅ Percentage-based liquidity removal (0-100%)
+- ✅ Ownership verification
+- ✅ Fee collection support
+- ✅ Position burning support
+- ✅ Gas estimation and cost display
+- ✅ Transaction status tracking
 
 ## Shared Configuration
 
