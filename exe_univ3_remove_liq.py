@@ -85,7 +85,8 @@ class UniswapV3LiquidityRemover:
                 'tokensOwed1': position[11]
             }
         except Exception as e:
-            raise ValueError(f"Failed to get position info for token_id {token_id}: {e}")
+            raise ValueError(
+                f"Failed to get position info for token_id {token_id}: {e}")
 
     def get_token_info(self, token_address):
         """Get token decimals and symbol"""
@@ -100,59 +101,64 @@ class UniswapV3LiquidityRemover:
 
     def decrease_liquidity(self, token_id, liquidity_percentage, collect_fees=True, burn=False, slippage_bps=50):
         """Decrease liquidity from a position"""
-        
+
         print(f"🔍 Fetching position information for token_id {token_id}...")
         position = self.get_position_info(token_id)
-        
+
         # Get token info
         token0_info = self.get_token_info(position['token0'])
         token1_info = self.get_token_info(position['token1'])
-        
+
         current_liquidity = position['liquidity']
         tokens_owed0 = position['tokensOwed0']
         tokens_owed1 = position['tokensOwed1']
-        
+
         print(f"📊 Position Information:")
         print(f"   Token 0: {token0_info['symbol']} ({position['token0']})")
         print(f"   Token 1: {token1_info['symbol']} ({position['token1']})")
         print(f"   Fee Tier: {position['fee'] / 10000}% ({position['fee']})")
-        print(f"   Tick Range: {position['tickLower']} to {position['tickUpper']}")
+        print(
+            f"   Tick Range: {position['tickLower']} to {position['tickUpper']}")
         print(f"   Current Liquidity: {current_liquidity}")
         print(f"   Tokens Owed (fees): {tokens_owed0 / (10**token0_info['decimals']):.6f} {token0_info['symbol']}, "
               f"{tokens_owed1 / (10**token1_info['decimals']):.6f} {token1_info['symbol']}\n")
-        
+
         # Calculate liquidity to remove
         if liquidity_percentage == 100:
             liquidity_to_remove = current_liquidity
             print(f"🗑️  Removing 100% of liquidity ({current_liquidity})")
         else:
-            liquidity_to_remove = int(current_liquidity * liquidity_percentage / 100)
-            print(f"🗑️  Removing {liquidity_percentage}% of liquidity ({liquidity_to_remove} / {current_liquidity})")
-        
+            liquidity_to_remove = int(
+                current_liquidity * liquidity_percentage / 100)
+            print(
+                f"🗑️  Removing {liquidity_percentage}% of liquidity ({liquidity_to_remove} / {current_liquidity})")
+
         if liquidity_to_remove == 0:
             raise ValueError("Cannot remove 0 liquidity")
-        
+
         if liquidity_to_remove > current_liquidity:
-            raise ValueError(f"Cannot remove more liquidity ({liquidity_to_remove}) than current ({current_liquidity})")
-        
+            raise ValueError(
+                f"Cannot remove more liquidity ({liquidity_to_remove}) than current ({current_liquidity})")
+
         # Check if owner
         try:
             owner = self.nfpm.functions.ownerOf(token_id).call()
             if owner.lower() != self.address.lower():
-                raise ValueError(f"Position token_id {token_id} is not owned by {self.address} (owner: {owner})")
+                raise ValueError(
+                    f"Position token_id {token_id} is not owned by {self.address} (owner: {owner})")
         except Exception as e:
             raise ValueError(f"Failed to verify ownership: {e}")
-        
+
         print("✅ Ownership verified\n")
-        
+
         # Prepare decreaseLiquidity params
         deadline = int(time.time()) + 1800  # 30 minutes
-        
+
         # For slippage, we'll set minimum amounts to 0 for now (you can calculate expected amounts)
         # In production, you might want to calculate expected amounts based on current price
         amount0_min = 0
         amount1_min = 0
-        
+
         decrease_params = {
             'tokenId': token_id,
             'liquidity': liquidity_to_remove,
@@ -160,11 +166,11 @@ class UniswapV3LiquidityRemover:
             'amount1Min': amount1_min,
             'deadline': deadline
         }
-        
+
         print("🚀 Decreasing liquidity...")
         print(f"   Liquidity to remove: {liquidity_to_remove}")
         print(f"   Deadline: {deadline} ({time.ctime(deadline)})\n")
-        
+
         # Estimate gas
         try:
             gas_estimate = self.nfpm.functions.decreaseLiquidity(decrease_params).estimate_gas({
@@ -174,10 +180,10 @@ class UniswapV3LiquidityRemover:
         except Exception as e:
             print(f"⚠️  Gas estimation failed: {e}")
             gas_estimate = 500000  # Fallback
-        
+
         # Build and send decreaseLiquidity transaction
         nonce = self.w3.eth.get_transaction_count(self.address)
-        
+
         tx = self.nfpm.functions.decreaseLiquidity(decrease_params).build_transaction({
             'from': self.address,
             'nonce': nonce,
@@ -185,63 +191,68 @@ class UniswapV3LiquidityRemover:
             'gasPrice': self.w3.eth.gas_price,
             'chainId': self.w3.eth.chain_id
         })
-        
-        print(f"💰 Gas price: {self.w3.from_wei(self.w3.eth.gas_price, 'gwei'):.2f} Gwei")
+
+        print(
+            f"💰 Gas price: {self.w3.from_wei(self.w3.eth.gas_price, 'gwei'):.2f} Gwei")
         print(
             f"💵 Estimated cost: {self.w3.from_wei(tx['gas'] * tx['gasPrice'], 'ether'):.6f} ETH\n")
-        
+
         signed_tx = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        
+
         print(f"⏳ Transaction sent: {tx_hash.hex()}")
         print(f"🔗 Etherscan: https://etherscan.io/tx/{tx_hash.hex()}\n")
-        
+
         # Wait for confirmation
         print("⏳ Waiting for confirmation...")
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-        
+
         if receipt.status == 1:
-            print(f"✅ Liquidity decreased successfully in block {receipt.blockNumber}\n")
-            
+            print(
+                f"✅ Liquidity decreased successfully in block {receipt.blockNumber}\n")
+
             # Parse DecreaseLiquidity event
             decrease_event = self.nfpm.events.DecreaseLiquidity().process_receipt(receipt)
             if decrease_event:
                 amount0 = decrease_event[0]['args']['amount0']
                 amount1 = decrease_event[0]['args']['amount1']
-                print(f"💰 Amount 0 received: {amount0 / (10 ** token0_info['decimals']):.6f} {token0_info['symbol']}")
-                print(f"💰 Amount 1 received: {amount1 / (10 ** token1_info['decimals']):.6f} {token1_info['symbol']}\n")
+                print(
+                    f"💰 Amount 0 received: {amount0 / (10 ** token0_info['decimals']):.6f} {token0_info['symbol']}")
+                print(
+                    f"💰 Amount 1 received: {amount1 / (10 ** token1_info['decimals']):.6f} {token1_info['symbol']}\n")
         else:
             raise Exception("Decrease liquidity transaction failed")
-        
+
         # Collect fees and tokens if requested
         if collect_fees:
             print("💰 Collecting fees and tokens...")
             self.collect(position, token_id, token0_info, token1_info)
-        
+
         # Burn position if removing all liquidity and burn flag is set
         if burn and liquidity_percentage == 100:
             print("🔥 Burning position (removing NFT)...")
             self.burn_position(token_id)
         elif burn and liquidity_percentage < 100:
-            print("⚠️  Warning: --burn flag ignored (only burns when removing 100% liquidity)")
-        
+            print(
+                "⚠️  Warning: --burn flag ignored (only burns when removing 100% liquidity)")
+
         return receipt
 
     def collect(self, position, token_id, token0_info, token1_info):
         """Collect fees and tokens from position"""
         # Collect all available tokens (set max to type(uint128).max equivalent)
         max_amount = 2**128 - 1
-        
+
         collect_params = {
             'tokenId': token_id,
             'recipient': self.address,
             'amount0Max': max_amount,
             'amount1Max': max_amount
         }
-        
+
         try:
             nonce = self.w3.eth.get_transaction_count(self.address)
-            
+
             tx = self.nfpm.functions.collect(collect_params).build_transaction({
                 'from': self.address,
                 'nonce': nonce,
@@ -249,13 +260,14 @@ class UniswapV3LiquidityRemover:
                 'gasPrice': self.w3.eth.gas_price,
                 'chainId': self.w3.eth.chain_id
             })
-            
+
             signed_tx = self.account.sign_transaction(tx)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            
+            tx_hash = self.w3.eth.send_raw_transaction(
+                signed_tx.rawTransaction)
+
             print(f"⏳ Collect transaction sent: {tx_hash.hex()}")
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            
+
             if receipt.status == 1:
                 # Collect event may not always be emitted, try to parse it
                 try:
@@ -268,7 +280,8 @@ class UniswapV3LiquidityRemover:
                     else:
                         print("✅ Collect completed (check transaction for details)\n")
                 except:
-                    print("✅ Collect completed (event parsing failed, check transaction for details)\n")
+                    print(
+                        "✅ Collect completed (event parsing failed, check transaction for details)\n")
             else:
                 print("⚠️  Collect transaction failed")
         except Exception as e:
@@ -278,7 +291,7 @@ class UniswapV3LiquidityRemover:
         """Burn the position NFT (only after removing all liquidity)"""
         try:
             nonce = self.w3.eth.get_transaction_count(self.address)
-            
+
             tx = self.nfpm.functions.burn(token_id).build_transaction({
                 'from': self.address,
                 'nonce': nonce,
@@ -286,15 +299,17 @@ class UniswapV3LiquidityRemover:
                 'gasPrice': self.w3.eth.gas_price,
                 'chainId': self.w3.eth.chain_id
             })
-            
+
             signed_tx = self.account.sign_transaction(tx)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            
+            tx_hash = self.w3.eth.send_raw_transaction(
+                signed_tx.rawTransaction)
+
             print(f"⏳ Burn transaction sent: {tx_hash.hex()}")
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            
+
             if receipt.status == 1:
-                print(f"✅ Position burned successfully in block {receipt.blockNumber}\n")
+                print(
+                    f"✅ Position burned successfully in block {receipt.blockNumber}\n")
             else:
                 print("⚠️  Burn transaction failed")
         except Exception as e:
@@ -305,7 +320,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Remove liquidity from a Uniswap V3 position'
     )
-    
+
     parser.add_argument('token_id', type=int, help='Position NFT token ID')
     parser.add_argument('liquidity_percentage', type=float,
                         help='Percentage of liquidity to remove (0-100)')
@@ -315,16 +330,16 @@ def main():
                         help='Burn the position NFT (only when removing 100% liquidity)')
     parser.add_argument('--slippage', type=float, default=0.5,
                         help='Slippage tolerance in percentage (default: 0.5)')
-    
+
     args = parser.parse_args()
-    
+
     if args.liquidity_percentage <= 0 or args.liquidity_percentage > 100:
         print("❌ Error: liquidity_percentage must be between 0 and 100")
         sys.exit(1)
-    
+
     try:
         remover = UniswapV3LiquidityRemover()
-        
+
         remover.decrease_liquidity(
             token_id=args.token_id,
             liquidity_percentage=args.liquidity_percentage,
@@ -332,7 +347,7 @@ def main():
             burn=args.burn,
             slippage_bps=int(args.slippage * 100)
         )
-        
+
     except KeyboardInterrupt:
         print("\n\n❌ Operation cancelled by user.")
         sys.exit(1)
@@ -345,4 +360,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
