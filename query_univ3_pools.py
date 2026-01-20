@@ -5,12 +5,12 @@ Usage: python query_univ3_pools.py
 """
 
 import json
-import math
 import os
 from web3 import Web3
 from datetime import datetime
 from dotenv import load_dotenv
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
 load_dotenv()
@@ -36,25 +36,9 @@ ABIS = load_abis()
 Q96 = 2 ** 96
 
 
-def tick_to_price(tick, dec0, dec1):
-    """Convert tick to human-readable price (token1/token0)"""
-    price_raw = 1.0001 ** tick
-    # Adjust for token decimals
-    price_adjusted = price_raw * (10 ** dec0) / (10 ** dec1)
-    return price_adjusted
+class UniswapV3StaticQuery:
+    """Simple class to fetch and cache static pool data (token0, token1, fee)"""
 
-
-def sqrt_price_to_price(sqrt_price_x96, dec0, dec1):
-    """Convert sqrtPriceX96 to human-readable price (token1/token0)"""
-    # sqrtPriceX96 = sqrt(price) * 2^96
-    # price = (sqrtPriceX96 / 2^96)^2
-    price_raw = (sqrt_price_x96 / Q96) ** 2
-    # Adjust for token decimals
-    price_adjusted = price_raw * (10 ** dec0) / (10 ** dec1)
-    return price_adjusted
-
-
-class UniswapV3PriceQuery:
     def __init__(self):
         rpc_url = os.getenv('RPC_URL')
         if not rpc_url:
@@ -64,106 +48,201 @@ class UniswapV3PriceQuery:
         if not self.w3.is_connected():
             raise ConnectionError("Failed to connect to Ethereum node")
 
-        self.token_cache = {}
+        self.factory_address = Web3.to_checksum_address(
+            CONFIG['contracts']['uniswap_v3_factory'])
+        self.factory = self.w3.eth.contract(
+            address=self.factory_address, abi=ABIS['uniswap_v3_factory'])
 
-    def get_token_info(self, address):
-        """Get token decimals and symbol (cached)"""
-        address = Web3.to_checksum_address(address)
-        if address not in self.token_cache:
+        self.pool_cache_file = os.path.join(
+            os.path.dirname(__file__), 'pool_info_univ3.json')
+        self.cache = self._load_cache()
+
+    def _load_cache(self):
+        """Load static pool cache from file"""
+        if os.path.exists(self.pool_cache_file):
             try:
-                contract = self.w3.eth.contract(
-                    address, abi=ABIS['erc20'])
-                self.token_cache[address] = {
-                    'decimals': contract.functions.decimals().call(),
-                    'symbol': contract.functions.symbol().call()
-                }
+                with open(self.pool_cache_file, 'r') as f:
+                    return json.load(f)
             except Exception as e:
-                # Fallback for tokens that might not have symbol/decimals
-                self.token_cache[address] = {
-                    'decimals': 18,
-                    'symbol': address[:10]
-                }
-        return self.token_cache[address]
+                print(f"⚠️  Warning: Could not load pool cache: {e}")
+                return {}
+        return {}
 
-    def get_pool_info(self, pool_address):
-        """Get pool information including current price and tick"""
+    def _save_cache(self):
+        """Save static pool cache to file"""
+        try:
+            with open(self.pool_cache_file, 'w') as f:
+                json.dump(self.cache, f, indent=2)
+        except Exception as e:
+            print(f"⚠️  Warning: Could not save pool cache: {e}")
+
+    def _get_token_info(self, address):
+        """Get token decimals and symbol"""
+        address = Web3.to_checksum_address(address)
+        try:
+            contract = self.w3.eth.contract(address, abi=ABIS['erc20'])
+            decimals = contract.functions.decimals().call()
+            symbol = contract.functions.symbol().call()
+            return {'decimals': decimals, 'symbol': symbol}
+        except Exception:
+            # Fallback for tokens that might not have symbol/decimals
+            return {'decimals': 18, 'symbol': address[:10]}
+
+    def _get_fee_tier(self, token0_addr, token1_addr, pool_address):
+        """Detect fee tier by trying common fees"""
+        fee_candidates = [500, 3000, 10000]
+        zero_address = '0x0000000000000000000000000000000000000000'
+        pool_address_lower = pool_address.lower()
+
+        for fee in fee_candidates:
+            try:
+                pool_addr = self.factory.functions.getPool(
+                    token0_addr, token1_addr, fee).call()
+                if (pool_addr and
+                    pool_addr.lower() != zero_address and
+                        pool_addr.lower() == pool_address_lower):
+                    return fee
+            except Exception:
+                continue
+
+        return None
+
+    def fetch_pool_static_info(self, pool_address):
+        """Fetch static pool information (token0, token1, fee)"""
         pool_address = Web3.to_checksum_address(pool_address)
+
         pool = self.w3.eth.contract(
             address=pool_address,
             abi=ABIS['uniswap_v3_pool']
         )
 
+        # Get token addresses
+        token0_addr = pool.functions.token0().call()
+        token1_addr = pool.functions.token1().call()
+
+        # Get fee tier
+        fee = self._get_fee_tier(token0_addr, token1_addr, pool_address)
+
+        # Retry fee detection if it failed
+        if fee is None:
+            import time
+            time.sleep(0.5)
+            fee = self._get_fee_tier(token0_addr, token1_addr, pool_address)
+
+        # Get token info
+        token0_info = self._get_token_info(token0_addr)
+        token1_info = self._get_token_info(token1_addr)
+
+        static_info = {
+            'token0': {
+                'address': token0_addr,
+                'symbol': token0_info['symbol'],
+                'decimals': token0_info['decimals']
+            },
+            'token1': {
+                'address': token1_addr,
+                'symbol': token1_info['symbol'],
+                'decimals': token1_info['decimals']
+            },
+            'fee': fee
+        }
+
+        return static_info
+
+    def fetch_missing_pools(self, pool_addresses):
+        """Fetch static info for pools that are not in cache"""
+        pool_addresses = [Web3.to_checksum_address(
+            addr) for addr in pool_addresses]
+        missing = [addr for addr in pool_addresses if addr not in self.cache]
+
+        if not missing:
+            return
+
+        print(f"📥 Fetching static info for {len(missing)} pool(s)...")
+
+        for i, pool_address in enumerate(missing, 1):
+            try:
+                print(f"   [{i}/{len(missing)}] Fetching {pool_address}...")
+                static_info = self.fetch_pool_static_info(pool_address)
+                self.cache[pool_address] = static_info
+                print(f"      ✅ Token0: {static_info['token0']['symbol']}, "
+                      f"Token1: {static_info['token1']['symbol']}, "
+                      f"Fee: {static_info['fee']}")
+            except Exception as e:
+                print(f"      ❌ Error: {e}")
+
+        self._save_cache()
+        print("✅ Static pool info cached.\n")
+
+
+class UniswapV3LiveQuery:
+    """Class to query live/dynamic pool data (prices, ticks) using parallel processing"""
+
+    def __init__(self):
+        rpc_url = os.getenv('RPC_URL')
+        if not rpc_url:
+            raise ValueError("RPC_URL not found in .env file")
+
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if not self.w3.is_connected():
+            raise ConnectionError("Failed to connect to Ethereum node")
+
+        self.pool_cache_file = os.path.join(
+            os.path.dirname(__file__), 'pool_info_univ3.json')
+        self.static_cache = self._load_static_cache()
+
+    def _load_static_cache(self):
+        """Load static pool cache from file"""
+        if os.path.exists(self.pool_cache_file):
+            try:
+                with open(self.pool_cache_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                raise ValueError(f"Could not load pool cache: {e}")
+        raise ValueError(
+            "pool_info_univ3.json not found. Run static query first.")
+
+    def _get_static_info(self, pool_address):
+        """Get static info from cache"""
+        pool_address = Web3.to_checksum_address(pool_address)
+        if pool_address not in self.static_cache:
+            raise ValueError(f"Pool {pool_address} not found in cache")
+        return self.static_cache[pool_address]
+
+    def get_pool_live_info(self, pool_address):
+        """Get live pool information (current price, tick)"""
+        pool_address = Web3.to_checksum_address(pool_address)
+
         try:
-            # Get slot0 (contains sqrtPriceX96 and current tick)
+            # Get static info from cache
+            static_info = self._get_static_info(pool_address)
+
+            # Query dynamic data (slot0)
+            pool = self.w3.eth.contract(
+                address=pool_address,
+                abi=ABIS['uniswap_v3_pool']
+            )
+
             slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
             current_tick = slot0[1]
 
-            # Get token addresses
-            token0_addr = pool.functions.token0().call()
-            token1_addr = pool.functions.token1().call()
-
-            # Get fee tier by trying to get pool from factory with different fees
-            # Or we can try to read it from the pool's immutable storage (not directly accessible)
-            # For now, we'll try common fee tiers
-            fee = None
-            factory_address = Web3.to_checksum_address(
-                CONFIG['contracts']['uniswap_v3_factory'])
-            factory = self.w3.eth.contract(
-                address=factory_address, abi=ABIS['uniswap_v3_factory'])
-            for test_fee in [500, 3000, 10000]:
-                try:
-                    pool_addr = factory.functions.getPool(
-                        token0_addr, token1_addr, test_fee).call()
-                    if pool_addr and pool_addr.lower() == pool_address.lower():
-                        fee = test_fee
-                        break
-                except:
-                    continue
-
-            # Get token info
-            token0_info = self.get_token_info(token0_addr)
-            token1_info = self.get_token_info(token1_addr)
-
-            # Calculate prices
-            # sqrtPriceX96 = sqrt(amount1/amount0) * 2^96
-            # where amount1 and amount0 are in their raw units (wei)
-            # price_raw = (sqrtPriceX96 / 2^96)^2 = amount1_wei/amount0_wei
-
-            # To get human-readable price (token1/token0):
-            # price = (amount1 / 10^dec1) / (amount0 / 10^dec0)
-            # = (amount1_wei / 10^dec1) / (amount0_wei / 10^dec0)
-            # = (amount1_wei / amount0_wei) * (10^dec0 / 10^dec1)
-            # = price_raw * (10^dec0 / 10^dec1)
-
+            # Calculate prices using cached token decimals
             price_raw = (sqrt_price_x96 / Q96) ** 2
-            # price_raw = amount1_wei / amount0_wei
-            # To get human-readable: price = (amount1 / 10^dec1) / (amount0 / 10^dec0)
-            # = price_raw * (10^dec0 / 10^dec1)
-            # This gives us: price of token1 in terms of token0
             price_token1_in_token0 = price_raw * \
-                (10 ** token0_info['decimals']) / \
-                (10 ** token1_info['decimals'])
-            # Inverse: price of token0 in terms of token1
+                (10 ** static_info['token0']['decimals']) / \
+                (10 ** static_info['token1']['decimals'])
             price_token0_in_token1 = 1 / price_token1_in_token0
 
             return {
                 'pool_address': pool_address,
-                'token0': {
-                    'address': token0_addr,
-                    'symbol': token0_info['symbol'],
-                    'decimals': token0_info['decimals']
-                },
-                'token1': {
-                    'address': token1_addr,
-                    'symbol': token1_info['symbol'],
-                    'decimals': token1_info['decimals']
-                },
+                'token0': static_info['token0'],
+                'token1': static_info['token1'],
                 'current_tick': current_tick,
                 'sqrt_price_x96': sqrt_price_x96,
                 'price_token1_in_token0': price_token1_in_token0,
                 'price_token0_in_token1': price_token0_in_token1,
-                'fee': fee,
+                'fee': static_info['fee'],
                 'timestamp': datetime.now().isoformat()
             }
         except Exception as e:
@@ -172,46 +251,56 @@ class UniswapV3PriceQuery:
                 'error': str(e)
             }
 
-    def query_all_pools(self):
-        """Query all pools defined in config"""
-        pools_config = CONFIG.get('univ3_pools', {})
-
-        if not pools_config:
-            print("⚠️  No pools defined in config.json 'univ3_pools' section")
-            return {}
-
+    def query_all_pools(self, pool_config):
+        """Query all pools in parallel for live data"""
+        pool_items = list(pool_config.items())
         results = OrderedDict()
 
-        print("=" * 80)
-        print("UNISWAP V3 POOL PRICES")
-        print("=" * 80)
-        print(f"Querying {len(pools_config)} pool(s)...\n")
+        print(
+            f"📊 Querying live data for {len(pool_items)} pool(s) in parallel...\n")
 
-        for pool_name, pool_address in pools_config.items():
-            print(f"📊 Querying {pool_name}...")
-            pool_info = self.get_pool_info(pool_address)
-            results[pool_name] = pool_info
+        def query_single_pool(pool_name, pool_address):
+            try:
+                pool_info = self.get_pool_live_info(pool_address)
+                return pool_name, pool_info
+            except Exception as e:
+                return pool_name, {
+                    'pool_address': Web3.to_checksum_address(pool_address),
+                    'error': str(e)
+                }
 
-            if 'error' in pool_info:
-                print(f"   ❌ Error: {pool_info['error']}\n")
-            else:
-                print(f"   ✅ Token 0: {pool_info['token0']['symbol']}")
-                print(f"   ✅ Token 1: {pool_info['token1']['symbol']}")
-                print(f"   📍 Current Tick: {pool_info['current_tick']}")
-                if pool_info['fee']:
+        with ThreadPoolExecutor(max_workers=len(pool_items)) as executor:
+            futures = {
+                executor.submit(query_single_pool, name, addr): name
+                for name, addr in pool_items
+            }
+
+            for future in as_completed(futures):
+                pool_name, pool_info = future.result()
+                results[pool_name] = pool_info
+
+                print(f"📊 {pool_name}")
+                if 'error' in pool_info:
+                    print(f"   ❌ Error: {pool_info['error']}\n")
+                else:
+                    print(f"   ✅ Token 0: {pool_info['token0']['symbol']}")
+                    print(f"   ✅ Token 1: {pool_info['token1']['symbol']}")
+                    print(f"   📍 Current Tick: {pool_info['current_tick']}")
+                    if pool_info['fee']:
+                        print(
+                            f"   💵 Fee Tier: {pool_info['fee'] / 10000}% ({pool_info['fee']})")
                     print(
-                        f"   💵 Fee Tier: {pool_info['fee'] / 10000}% ({pool_info['fee']})")
-                # price_token1_in_token0 = price of token1 in terms of token0 (e.g., USDT per WETH)
-                # price_token0_in_token1 = price of token0 in terms of token1 (e.g., WETH per USDT)
-                # So: 1 token0 = price_token1_in_token0 token1
-                # And: 1 token1 = price_token0_in_token1 token0
-                print(
-                    f"   💰 Price: 1 {pool_info['token0']['symbol']} = {pool_info['price_token1_in_token0']:.6f} {pool_info['token1']['symbol']}")
-                print(
-                    f"   💰 Price: 1 {pool_info['token1']['symbol']} = {pool_info['price_token0_in_token1']:.6f} {pool_info['token0']['symbol']}")
-                print()
+                        f"   💰 Price: 1 {pool_info['token0']['symbol']} = {pool_info['price_token1_in_token0']:.6f} {pool_info['token1']['symbol']}")
+                    print(
+                        f"   💰 Price: 1 {pool_info['token1']['symbol']} = {pool_info['price_token0_in_token1']:.6f} {pool_info['token0']['symbol']}")
+                    print()
 
-        return results
+        # Sort results to maintain original order
+        sorted_results = OrderedDict(
+            (name, results[name]) for name in pool_config.keys()
+            if name in results
+        )
+        return sorted_results
 
     def print_results_table(self, results):
         """Print results in a formatted table"""
@@ -239,22 +328,39 @@ class UniswapV3PriceQuery:
         """Save results to JSON file"""
         results_dir = os.path.join(os.path.dirname(__file__), 'results')
         os.makedirs(results_dir, exist_ok=True)
-        
+
         output_file = os.path.join(results_dir, 'univ3_pools.json')
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
-        
+
         print(f"\n💾 Results saved to: {output_file}")
 
 
 def main():
     try:
-        query = UniswapV3PriceQuery()
-        results = query.query_all_pools()
+        pools_config = CONFIG.get('univ3_pools', {})
+
+        if not pools_config:
+            print("⚠️  No pools defined in config.json 'univ3_pools' section")
+            return
+
+        print("=" * 80)
+        print("UNISWAP V3 POOL PRICES")
+        print("=" * 80)
+        print()
+
+        # Step 1: Check cache and fetch missing static data
+        static_query = UniswapV3StaticQuery()
+        pool_addresses = list(pools_config.values())
+        static_query.fetch_missing_pools(pool_addresses)
+
+        # Step 2: Query live data in parallel
+        live_query = UniswapV3LiveQuery()
+        results = live_query.query_all_pools(pools_config)
 
         if results:
-            query.print_results_table(results)
-            query.save_results(results)
+            live_query.print_results_table(results)
+            live_query.save_results(results)
 
             # Also output JSON to stdout
             print("\n" + "=" * 80)
