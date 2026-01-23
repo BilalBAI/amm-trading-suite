@@ -5,5 +5,6 @@ from .positions import PositionQuery
 from .pools import PoolQuery
 from .wallet import generate_wallet
 from .swap import SwapManager
+from .balances import BalanceQuery
 
-__all__ = ["LiquidityManager", "PositionQuery", "PoolQuery", "generate_wallet", "SwapManager"]
+__all__ = ["LiquidityManager", "PositionQuery", "PoolQuery", "generate_wallet", "SwapManager", "BalanceQuery"]

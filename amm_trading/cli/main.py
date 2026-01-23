@@ -11,6 +11,7 @@ from ..operations.positions import PositionQuery
 from ..operations.liquidity import LiquidityManager
 from ..operations.wallet import generate_wallet
 from ..operations.swap import SwapManager
+from ..operations.balances import BalanceQuery
 
 
 def get_results_dir():
@@ -70,6 +71,30 @@ def cmd_query_positions(args):
     print(json.dumps(result, indent=2, default=str))
     short_addr = address[:10] if address else "unknown"
     filepath = save_result(f"positions_{short_addr}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_query_balances(args):
+    """Query token balances for address"""
+    query = BalanceQuery()
+    result = query.get_all_balances(args.address)
+
+    # Print formatted output
+    print(f"Balances for {result['address']}")
+    print("-" * 60)
+    for bal in result["balances"]:
+        if "error" in bal:
+            print(f"  {bal['symbol']}: ERROR - {bal['error']}")
+        elif bal["balance"] > 0:
+            print(f"  {bal['symbol']}: {bal['balance']:.6f}")
+        else:
+            print(f"  {bal['symbol']}: 0")
+    print("-" * 60)
+
+    # Also output JSON
+    print("\n" + json.dumps(result, indent=2, default=str))
+    short_addr = result["address"][:10]
+    filepath = save_result(f"balances_{short_addr}.json", result)
     print(f"\nSaved to {filepath}", file=sys.stderr)
 
 
@@ -261,6 +286,11 @@ def main():
     positions_parser = query_sub.add_parser("positions", help="Query all positions for address")
     positions_parser.add_argument("--address", help="Address to query")
     positions_parser.set_defaults(func=cmd_query_positions)
+
+    # query balances
+    balances_parser = query_sub.add_parser("balances", help="Query ETH and token balances")
+    balances_parser.add_argument("--address", help="Address to query")
+    balances_parser.set_defaults(func=cmd_query_balances)
 
     # Add liquidity command
     add_parser = subparsers.add_parser("add", help="Add liquidity")

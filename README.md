@@ -51,6 +51,9 @@ amm-trading query position 1157630
 # Query all positions for an address
 amm-trading query positions --address 0x123...
 
+# Query ETH and token balances for an address
+amm-trading query balances --address 0x123...
+
 # Add liquidity
 amm-trading add WETH USDT 3000 -887220 887220 0.1 300
 
@@ -94,7 +97,7 @@ All results are automatically saved to the `results/` folder.
 
 ```python
 from amm_trading import Web3Manager, Config
-from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet, SwapManager
+from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet, SwapManager, BalanceQuery
 from amm_trading.contracts import ERC20, NFPM, Pool
 
 # Query operations (read-only, no wallet needed)
@@ -106,6 +109,13 @@ print(f"Current value: {position['value_in_token1']:.2f} {position['token1']['sy
 # Query all pools
 pool_query = PoolQuery()
 pools = pool_query.get_all_configured_pools()
+
+# Query token balances
+balance_query = BalanceQuery()
+balances = balance_query.get_all_balances("0x123...")
+for bal in balances["balances"]:
+    if bal["balance"] > 0:
+        print(f"{bal['symbol']}: {bal['balance']}")
 
 # Liquidity operations (requires wallet.env)
 manager = LiquidityManager()
@@ -200,9 +210,10 @@ amm_trading/
 │   ├── nfpm.py          # NonfungiblePositionManager wrapper
 │   └── pool.py          # Uniswap V3 Pool wrapper
 ├── operations/
+│   ├── balances.py      # Query token balances
 │   ├── liquidity.py     # Add/remove/migrate liquidity
-│   ├── positions.py     # Query position details
 │   ├── pools.py         # Query pool information
+│   ├── positions.py     # Query position details
 │   ├── swap.py          # Token swap operations
 │   └── wallet.py        # Wallet generation
 ├── utils/
@@ -246,6 +257,7 @@ All CLI commands save results to the `results/` folder:
 | `query pools` | `results/univ3_pools.json` |
 | `query position <id>` | `results/univ3_position_<id>.json` |
 | `query positions` | `results/positions_<address>.json` |
+| `query balances` | `results/balances_<address>.json` |
 | `add ...` | `results/add_liquidity_<id>.json` |
 | `remove ...` | `results/remove_liquidity_<id>.json` |
 | `migrate ...` | `results/migrate_<old>_to_<new>.json` |
