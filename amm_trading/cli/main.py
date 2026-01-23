@@ -98,6 +98,69 @@ def cmd_query_balances(args):
     print(f"\nSaved to {filepath}", file=sys.stderr)
 
 
+def cmd_calculate_amounts(args):
+    """Calculate optimal token amounts for a position"""
+    manager = LiquidityManager()
+    
+    # Use either ticks or percentage range
+    if hasattr(args, 'percent_lower'):
+        # Percentage-based
+        result = manager.calculate_optimal_amounts_range(
+            token0=args.token0,
+            token1=args.token1,
+            fee=args.fee,
+            percent_lower=args.percent_lower,
+            percent_upper=args.percent_upper,
+            amount0_desired=args.amount0 if args.amount0 else None,
+            amount1_desired=args.amount1 if args.amount1 else None,
+        )
+        print(f"Calculating amounts for {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}% range")
+    else:
+        # Tick-based
+        result = manager.calculate_optimal_amounts(
+            token0=args.token0,
+            token1=args.token1,
+            fee=args.fee,
+            tick_lower=args.tick_lower,
+            tick_upper=args.tick_upper,
+            amount0_desired=args.amount0 if args.amount0 else None,
+            amount1_desired=args.amount1 if args.amount1 else None,
+        )
+        print(f"Calculating amounts for tick range {args.tick_lower} to {args.tick_upper}")
+    
+    print("=" * 70)
+    print(f"\n📊 POSITION DETAILS")
+    print(f"  Pool: {result['token0']['symbol']}/{result['token1']['symbol']} ({args.fee/10000:.2f}% fee)")
+    print(f"  Current Price: {result['current_price']:.6f} {result['token1']['symbol']}/{result['token0']['symbol']}")
+    print(f"  Price Range: {result['price_lower']:.6f} to {result['price_upper']:.6f}")
+    print(f"  Position Status: {result['position_type'].replace('_', ' ').title()}")
+    
+    print(f"\n💰 OPTIMAL AMOUNTS")
+    print(f"  {result['token0']['symbol']}: {result['token0']['amount']:.6f}")
+    print(f"  {result['token1']['symbol']}: {result['token1']['amount']:.6f}")
+    
+    if result['position_type'] == 'in_range':
+        print(f"\n📈 RATIO")
+        print(f"  {result['ratio']}")
+        print(f"\n💡 TIP: Both tokens are needed since current price is in range")
+    elif result['position_type'] == 'below_range':
+        print(f"\n⚠️  WARNING: Current price is BELOW your range")
+        print(f"  Only {result['token0']['symbol']} is needed")
+        print(f"  Position will be inactive until price drops into range")
+    else:  # above_range
+        print(f"\n⚠️  WARNING: Current price is ABOVE your range")
+        print(f"  Only {result['token1']['symbol']} is needed")
+        print(f"  Position will be inactive until price rises into range")
+    
+    print("\n" + "=" * 70)
+    
+    # Save to JSON
+    print("\n" + json.dumps(result, indent=2, default=str))
+    filename = f"calculate_amounts_{result['token0']['symbol']}_{result['token1']['symbol']}.json"
+    filepath = save_result(filename, result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
 def cmd_add_liquidity(args):
     """Add liquidity to pool"""
     manager = LiquidityManager()
@@ -128,6 +191,46 @@ def cmd_add_liquidity(args):
         "token1": result["token1"],
         "tick_lower": result["tick_lower"],
         "tick_upper": result["tick_upper"],
+    }
+    filepath = save_result(f"add_liquidity_{result['token_id']}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
+
+
+def cmd_add_liquidity_range(args):
+    """Add liquidity using percentage range"""
+    manager = LiquidityManager()
+
+    print(f"Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
+    print(f"Fee: {args.fee}, Range: {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}%")
+
+    result = manager.add_liquidity_range(
+        token0=args.token0,
+        token1=args.token1,
+        fee=args.fee,
+        percent_lower=args.percent_lower,
+        percent_upper=args.percent_upper,
+        amount0=args.amount0,
+        amount1=args.amount1,
+        slippage_bps=int(args.slippage * 100),
+    )
+
+    print(f"\nSuccess! Token ID: {result['token_id']}")
+    print(f"Tx: {result['receipt'].transactionHash.hex()}")
+
+    # Save result
+    save_data = {
+        "token_id": result["token_id"],
+        "tx_hash": result["receipt"].transactionHash.hex(),
+        "block": result["receipt"].blockNumber,
+        "token0": result["token0"],
+        "token1": result["token1"],
+        "tick_lower": result["tick_lower"],
+        "tick_upper": result["tick_upper"],
+        "current_price": result["current_price"],
+        "price_lower": result["price_lower"],
+        "price_upper": result["price_upper"],
+        "percent_lower": result["percent_lower"],
+        "percent_upper": result["percent_upper"],
     }
     filepath = save_result(f"add_liquidity_{result['token_id']}.json", save_data)
     print(f"Saved to {filepath}", file=sys.stderr)
@@ -292,6 +395,32 @@ def main():
     balances_parser.add_argument("--address", help="Address to query")
     balances_parser.set_defaults(func=cmd_query_balances)
 
+    # Calculate optimal amounts command
+    calc_parser = subparsers.add_parser("calculate", help="Calculate optimal token amounts")
+    calc_sub = calc_parser.add_subparsers(dest="calc_type")
+    
+    # calculate amounts (tick-based)
+    calc_ticks_parser = calc_sub.add_parser("amounts", help="Calculate amounts for tick range")
+    calc_ticks_parser.add_argument("token0", help="Token0 symbol or address")
+    calc_ticks_parser.add_argument("token1", help="Token1 symbol or address")
+    calc_ticks_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    calc_ticks_parser.add_argument("tick_lower", type=int, help="Lower tick")
+    calc_ticks_parser.add_argument("tick_upper", type=int, help="Upper tick")
+    calc_ticks_parser.add_argument("--amount0", type=float, help="Desired amount of token0 (specify this OR amount1)")
+    calc_ticks_parser.add_argument("--amount1", type=float, help="Desired amount of token1 (specify this OR amount0)")
+    calc_ticks_parser.set_defaults(func=cmd_calculate_amounts)
+    
+    # calculate amounts (percentage-based)
+    calc_range_parser = calc_sub.add_parser("amounts-range", help="Calculate amounts for percentage range")
+    calc_range_parser.add_argument("token0", help="Token0 symbol or address")
+    calc_range_parser.add_argument("token1", help="Token1 symbol or address")
+    calc_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    calc_range_parser.add_argument("percent_lower", type=float, help="Lower percentage (e.g., -0.05)")
+    calc_range_parser.add_argument("percent_upper", type=float, help="Upper percentage (e.g., 0.05)")
+    calc_range_parser.add_argument("--amount0", type=float, help="Desired amount of token0 (specify this OR amount1)")
+    calc_range_parser.add_argument("--amount1", type=float, help="Desired amount of token1 (specify this OR amount0)")
+    calc_range_parser.set_defaults(func=cmd_calculate_amounts)
+
     # Add liquidity command
     add_parser = subparsers.add_parser("add", help="Add liquidity")
     add_parser.add_argument("token0", help="Token0 symbol or address")
@@ -303,6 +432,18 @@ def main():
     add_parser.add_argument("amount1", type=float, help="Amount of token1")
     add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %")
     add_parser.set_defaults(func=cmd_add_liquidity)
+
+    # Add liquidity with percentage range command
+    add_range_parser = subparsers.add_parser("add-range", help="Add liquidity using percentage range")
+    add_range_parser.add_argument("token0", help="Token0 symbol or address")
+    add_range_parser.add_argument("token1", help="Token1 symbol or address")
+    add_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    add_range_parser.add_argument("percent_lower", type=float, help="Lower percentage (e.g., -0.05 for -5%%)")
+    add_range_parser.add_argument("percent_upper", type=float, help="Upper percentage (e.g., 0.05 for +5%%)")
+    add_range_parser.add_argument("amount0", type=float, help="Amount of token0")
+    add_range_parser.add_argument("amount1", type=float, help="Amount of token1")
+    add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %")
+    add_range_parser.set_defaults(func=cmd_add_liquidity_range)
 
     # Remove liquidity command
     remove_parser = subparsers.add_parser("remove", help="Remove liquidity")
@@ -354,6 +495,10 @@ def main():
 
     if args.command == "wallet" and not args.wallet_type:
         wallet_parser.print_help()
+        sys.exit(1)
+
+    if args.command == "calculate" and not args.calc_type:
+        calc_parser.print_help()
         sys.exit(1)
 
     try:

@@ -54,11 +54,26 @@ amm-trading query positions --address 0x123...
 # Query ETH and token balances for an address
 amm-trading query balances --address 0x123...
 
-# Add liquidity
+# Calculate optimal token amounts (NEW!)
+# Before adding liquidity, calculate exact amounts needed
+amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
+amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
+
+# Add liquidity (using ticks)
 amm-trading add WETH USDT 3000 -887220 887220 0.1 300
 
 # Add with custom slippage (1%)
 amm-trading add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
+
+# Add liquidity using percentage range (NEW!)
+# Symmetric range: -5% to +5% around current price
+amm-trading add-range WETH USDT 3000 -0.05 0.05 0.1 300
+
+# Asymmetric range: -10% to -1% (below current price)
+amm-trading add-range WETH USDT 3000 -0.10 -0.01 0.1 300
+
+# Above current price: +1% to +10%
+amm-trading add-range WETH USDT 3000 0.01 0.10 0.1 300
 
 # Remove 50% liquidity and collect fees
 amm-trading remove 1157630 50 --collect-fees
@@ -117,10 +132,25 @@ for bal in balances["balances"]:
     if bal["balance"] > 0:
         print(f"{bal['symbol']}: {bal['balance']}")
 
+# Calculate optimal amounts BEFORE adding liquidity (NEW!)
+from amm_trading import Web3Manager
+web3_manager = Web3Manager(require_signer=False)
+calc_manager = LiquidityManager(manager=web3_manager)
+
+# I have 0.1 WETH, how much USDT do I need?
+result = calc_manager.calculate_optimal_amounts_range(
+    token0="WETH", token1="USDT", fee=3000,
+    percent_lower=-0.05, percent_upper=0.05,
+    amount0_desired=0.1,  # What I have
+    amount1_desired=None,  # Calculate this
+)
+print(f"Need: {result['token0']['amount']} WETH and {result['token1']['amount']} USDT")
+print(f"Position type: {result['position_type']}")  # in_range, below_range, or above_range
+
 # Liquidity operations (requires wallet.env)
 manager = LiquidityManager()
 
-# Add liquidity
+# Add liquidity (using ticks)
 result = manager.add_liquidity(
     token0="WETH",
     token1="USDT",
@@ -132,6 +162,22 @@ result = manager.add_liquidity(
     slippage_bps=50,  # 0.5%
 )
 print(f"New position ID: {result['token_id']}")
+
+# Add liquidity using percentage range (NEW!)
+# Automatically converts percentages to ticks based on current pool price
+result = manager.add_liquidity_range(
+    token0="WETH",
+    token1="USDT",
+    fee=3000,
+    percent_lower=-0.05,  # -5% below current price
+    percent_upper=0.05,   # +5% above current price
+    amount0=0.1,
+    amount1=300,
+    slippage_bps=50,  # 0.5%
+)
+print(f"New position ID: {result['token_id']}")
+print(f"Current price: {result['current_price']:.2f}")
+print(f"Price range: {result['price_lower']:.2f} to {result['price_upper']:.2f}")
 
 # Remove liquidity
 result = manager.remove_liquidity(
@@ -266,7 +312,9 @@ All CLI commands save results to the `results/` folder:
 
 ## Documentation
 
-For detailed information about ticks and prices, see [TICKS_AND_PRICES.md](TICKS_AND_PRICES.md).
+- **[TICKS_AND_PRICES.md](TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
+- **[PERCENTAGE_RANGES.md](PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
+- **[TOKEN_AMOUNTS_GUIDE.md](TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts (NEW!)
 
 ## Archived Scripts
 
