@@ -10,6 +10,7 @@ from ..operations.pools import PoolQuery
 from ..operations.positions import PositionQuery
 from ..operations.liquidity import LiquidityManager
 from ..operations.wallet import generate_wallet
+from ..operations.swap import SwapManager
 
 
 def get_results_dir():
@@ -203,6 +204,37 @@ def cmd_wallet_generate(args):
     print("\nSECURITY: Keep this file safe and never share it!")
 
 
+def cmd_swap(args):
+    """Execute token swap"""
+    manager = SwapManager()
+
+    print(f"Swapping {args.amount} {args.token_in} -> {args.token_out}")
+    print(f"Pool: {args.pool}, Slippage: {args.slippage} bps")
+    if args.max_gas_price:
+        print(f"Max gas price: {args.max_gas_price} gwei")
+
+    result = manager.swap(
+        token_in=args.token_in,
+        token_out=args.token_out,
+        pool_name=args.pool,
+        amount_in=args.amount,
+        slippage_bps=args.slippage,
+        max_gas_price_gwei=args.max_gas_price,
+        deadline_minutes=args.deadline,
+    )
+
+    print(f"\nSuccess!")
+    print(f"Tx: {result['tx_hash']}")
+    print(f"Block: {result['block']}")
+    print(f"In:  {result['token_in']['amount']} {result['token_in']['symbol']}")
+    if result['token_out']['expected_amount']:
+        print(f"Out: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+    print(f"Gas used: {result['gas_used']}")
+
+    filepath = save_result(f"swap_{result['tx_hash'][:10]}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="amm-trading",
@@ -268,6 +300,17 @@ def main():
     wallet_gen_parser = wallet_sub.add_parser("generate", help="Generate new wallet")
     wallet_gen_parser.add_argument("--accounts", type=int, default=3, help="Number of accounts to derive")
     wallet_gen_parser.set_defaults(func=cmd_wallet_generate)
+
+    # Swap command
+    swap_parser = subparsers.add_parser("swap", help="Swap tokens")
+    swap_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
+    swap_parser.add_argument("token_out", help="Token to receive (symbol or address)")
+    swap_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
+    swap_parser.add_argument("amount", type=float, help="Amount of token_in to swap")
+    swap_parser.add_argument("--slippage", type=int, default=50, help="Slippage in basis points (default: 50 = 0.5%%)")
+    swap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    swap_parser.add_argument("--deadline", type=int, default=30, help="Transaction deadline in minutes (default: 30)")
+    swap_parser.set_defaults(func=cmd_swap)
 
     args = parser.parse_args()
 

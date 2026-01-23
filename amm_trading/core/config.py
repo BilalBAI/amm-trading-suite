@@ -97,6 +97,11 @@ class Config:
         """Uniswap V3 Factory address"""
         return self.contracts.get("uniswap_v3_factory")
 
+    @property
+    def router_address(self):
+        """Uniswap V3 SwapRouter address"""
+        return self.contracts.get("uniswap_v3_router")
+
     def get_abi(self, name):
         """Get ABI by name"""
         if name not in Config._abis:

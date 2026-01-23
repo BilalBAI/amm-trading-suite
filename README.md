@@ -74,6 +74,18 @@ amm-trading wallet generate
 
 # Generate with 5 accounts
 amm-trading wallet generate --accounts 5
+
+# Swap tokens
+amm-trading swap WETH USDT WETH_USDT_30 0.1
+
+# Swap with custom slippage (1% = 100 basis points)
+amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
+
+# Swap with max gas price limit
+amm-trading swap WETH USDT WETH_USDT_30 0.1 --max-gas-price 50
+
+# Swap with custom deadline (60 minutes)
+amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 ```
 
 All results are automatically saved to the `results/` folder.
@@ -82,7 +94,7 @@ All results are automatically saved to the `results/` folder.
 
 ```python
 from amm_trading import Web3Manager, Config
-from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet
+from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet, SwapManager
 from amm_trading.contracts import ERC20, NFPM, Pool
 
 # Query operations (read-only, no wallet needed)
@@ -133,6 +145,19 @@ wallet = generate_wallet(num_accounts=3)
 print(f"Mnemonic: {wallet['mnemonic']}")
 for acc in wallet["accounts"]:
     print(f"Account {acc['index']}: {acc['address']}")
+
+# Swap tokens (requires wallet.env)
+swap = SwapManager()
+result = swap.swap(
+    token_in="WETH",
+    token_out="USDT",
+    pool_name="WETH_USDT_30",
+    amount_in=0.1,
+    slippage_bps=50,  # 0.5%
+    max_gas_price_gwei=50,  # Optional
+)
+print(f"Tx: {result['tx_hash']}")
+print(f"Swapped {result['token_in']['amount']} {result['token_in']['symbol']}")
 ```
 
 ### Low-level Contract Access
@@ -177,7 +202,9 @@ amm_trading/
 ├── operations/
 │   ├── liquidity.py     # Add/remove/migrate liquidity
 │   ├── positions.py     # Query position details
-│   └── pools.py         # Query pool information
+│   ├── pools.py         # Query pool information
+│   ├── swap.py          # Token swap operations
+│   └── wallet.py        # Wallet generation
 ├── utils/
 │   ├── math.py          # Tick/price calculations
 │   └── transactions.py  # Transaction helpers
@@ -223,6 +250,7 @@ All CLI commands save results to the `results/` folder:
 | `remove ...` | `results/remove_liquidity_<id>.json` |
 | `migrate ...` | `results/migrate_<old>_to_<new>.json` |
 | `wallet generate` | `results/wallet.json` |
+| `swap ...` | `results/swap_<tx_hash>.json` |
 
 ## Documentation
 
