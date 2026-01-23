@@ -1,3 +1,19 @@
+Metadata-Version: 2.4
+Name: amm-trading
+Version: 0.1.0
+Summary: A toolkit for Uniswap V3 liquidity management
+Home-page: https://github.com/yourusername/amm-tools
+Author: Your Name
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: web3>=6.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: mnemonic>=0.20
+Requires-Dist: eth-account>=0.9.0
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
 # AMM Trading Toolkit
 
 A Python package for interacting with Uniswap V3 on Ethereum. Query positions, analyze pools, and manage liquidity programmatically.
@@ -36,11 +52,8 @@ PRIVATE_KEY=your_private_key_here
 ### Command Line
 
 ```bash
-# Query all configured pools (uses cache for static data)
+# Query all configured pools
 amm-trading query pools
-
-# Force refresh static pool data cache
-amm-trading query pools --refresh-cache
 
 # Query specific pool
 amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
@@ -68,21 +81,13 @@ amm-trading migrate 1157630 -887220 887220
 
 # Migrate 50% to new range
 amm-trading migrate 1157630 -887220 887220 --percentage 50
-
-# Generate a new wallet
-amm-trading wallet generate
-
-# Generate with 5 accounts
-amm-trading wallet generate --accounts 5
 ```
-
-All results are automatically saved to the `results/` folder.
 
 ### Python API
 
 ```python
 from amm_trading import Web3Manager, Config
-from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet
+from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery
 from amm_trading.contracts import ERC20, NFPM, Pool
 
 # Query operations (read-only, no wallet needed)
@@ -127,12 +132,6 @@ result = manager.migrate_liquidity(
     burn_old=True,
 )
 print(f"New position ID: {result['new_token_id']}")
-
-# Generate a new wallet (no RPC connection needed)
-wallet = generate_wallet(num_accounts=3)
-print(f"Mnemonic: {wallet['mnemonic']}")
-for acc in wallet["accounts"]:
-    print(f"Account {acc['index']}: {acc['address']}")
 ```
 
 ### Low-level Contract Access
@@ -193,36 +192,6 @@ amm_trading/
 | 500 | 0.05% | 10 | Stable pairs |
 | 3000 | 0.3% | 60 | Most pairs |
 | 10000 | 1% | 200 | Exotic pairs |
-
-## Caching
-
-Pool queries use a cache for static data (token info, fee tier, tick spacing) to reduce RPC calls.
-
-- **Cache file:** `pool_info.json` (root folder)
-- **First query:** ~6 RPC calls per pool
-- **Subsequent queries:** ~2 RPC calls per pool (~70% reduction)
-
-Static data cached:
-- `pool_name`, `address`, `token0`, `token1`, `pair`, `fee`, `fee_percent`, `tick_spacing`
-
-Dynamic data (always fetched fresh):
-- `current_tick`, `current_price`, `liquidity`
-
-Use `--refresh-cache` to force update the cache.
-
-## Output Files
-
-All CLI commands save results to the `results/` folder:
-
-| Command | Output File |
-|---------|-------------|
-| `query pools` | `results/univ3_pools.json` |
-| `query position <id>` | `results/univ3_position_<id>.json` |
-| `query positions` | `results/positions_<address>.json` |
-| `add ...` | `results/add_liquidity_<id>.json` |
-| `remove ...` | `results/remove_liquidity_<id>.json` |
-| `migrate ...` | `results/migrate_<old>_to_<new>.json` |
-| `wallet generate` | `results/wallet.json` |
 
 ## Documentation
 

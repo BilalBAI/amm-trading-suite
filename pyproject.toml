@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amm-trading"
+version = "0.1.0"
+description = "A toolkit for Uniswap V3 liquidity management"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "web3>=6.0.0",
+    "python-dotenv>=1.0.0",
+    "mnemonic>=0.20",
+    "eth-account>=0.9.0",
+]
+
+[project.scripts]
+amm-trading = "amm_trading.cli.main:main"
+
+[tool.setuptools.packages.find]
+exclude = ["archive", "results", "venv"]

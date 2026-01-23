@@ -478,6 +478,30 @@
         {
             "constant": true,
             "inputs": [],
+            "name": "fee",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint24"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "liquidity",
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint128"
+                }
+            ],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
             "name": "slot0",
             "outputs": [
                 {
