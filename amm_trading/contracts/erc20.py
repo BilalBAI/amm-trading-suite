@@ -23,14 +23,47 @@ class ERC20:
         if self._info is None:
             self._info = {
                 "address": self.address,
-                "symbol": self.contract.functions.symbol().call(),
+                "symbol": self._get_symbol(),
+                "name": self._get_name(),
                 "decimals": self.contract.functions.decimals().call(),
             }
         return self._info
 
+    def _get_symbol(self):
+        """Get token symbol, handling non-standard tokens like MKR"""
+        try:
+            return self.contract.functions.symbol().call()
+        except Exception:
+            # Some tokens (MKR, SAI) return bytes32 instead of string
+            try:
+                raw = self.contract.functions.symbol().call()
+                if isinstance(raw, bytes):
+                    return raw.rstrip(b'\x00').decode('utf-8')
+                return str(raw)
+            except Exception:
+                return "UNKNOWN"
+
+    def _get_name(self):
+        """Get token name, handling non-standard tokens"""
+        try:
+            return self.contract.functions.name().call()
+        except Exception:
+            # Some tokens return bytes32 or don't have name()
+            try:
+                raw = self.contract.functions.name().call()
+                if isinstance(raw, bytes):
+                    return raw.rstrip(b'\x00').decode('utf-8')
+                return str(raw)
+            except Exception:
+                return "Unknown Token"
+
     @property
     def symbol(self):
         return self.info["symbol"]
+
+    @property
+    def name(self):
+        return self.info["name"]
 
     @property
     def decimals(self):

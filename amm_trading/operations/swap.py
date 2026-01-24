@@ -132,36 +132,53 @@ class SwapManager:
         )
 
         # Estimate gas and get expected output
+        # First, simulate the swap to get expected output
         try:
-            # Try to estimate with call first to get expected output
             expected_out = self.router.functions.exactInputSingle(swap_params).call({
                 "from": self.manager.address
             })
-
-            # Calculate minimum output with slippage
-            slippage_multiplier = (10000 - slippage_bps) / 10000
-            amount_out_min = int(expected_out * slippage_multiplier)
-
-            # Rebuild params with actual minimum
-            swap_params = (
-                token_in_addr,
-                token_out_addr,
-                fee,
-                self.manager.address,
-                deadline,
-                amount_in_wei,
-                amount_out_min,
-                0,
+        except Exception as e:
+            raise ValueError(
+                f"Failed to estimate swap output. The swap may fail due to: "
+                f"insufficient liquidity, invalid pool, or token issues. Error: {e}"
             )
 
+        if expected_out == 0:
+            raise ValueError(
+                "Swap would return 0 tokens. Check pool liquidity and token addresses."
+            )
+
+        # Calculate minimum output with slippage protection
+        slippage_multiplier = (10000 - slippage_bps) / 10000
+        amount_out_min = int(expected_out * slippage_multiplier)
+
+        if amount_out_min == 0:
+            raise ValueError(
+                f"Minimum output is 0 after {slippage_bps/100}% slippage. "
+                f"Expected output too small or slippage too high."
+            )
+
+        # Rebuild params with actual minimum
+        swap_params = (
+            token_in_addr,
+            token_out_addr,
+            fee,
+            self.manager.address,
+            deadline,
+            amount_in_wei,
+            amount_out_min,
+            0,
+        )
+
+        # Estimate gas
+        try:
             gas_estimate = self.router.functions.exactInputSingle(swap_params).estimate_gas({
                 "from": self.manager.address
             })
         except Exception as e:
-            # Fallback gas estimate
-            gas_estimate = 300000
-            expected_out = None
-            amount_out_min = 0
+            raise ValueError(
+                f"Failed to estimate gas. The swap may revert. Error: {e}"
+            )
 
         # Build transaction
         tx = self.router.functions.exactInputSingle(swap_params).build_transaction({
@@ -196,8 +213,8 @@ class SwapManager:
             "token_out": {
                 "symbol": token_out_contract.symbol,
                 "address": token_out_addr,
-                "expected_amount": token_out_contract.from_wei(expected_out) if expected_out else None,
-                "min_amount": token_out_contract.from_wei(amount_out_min) if amount_out_min else None,
+                "expected_amount": token_out_contract.from_wei(expected_out),
+                "min_amount": token_out_contract.from_wei(amount_out_min),
             },
             "pool": pool_name,
             "fee": fee,
