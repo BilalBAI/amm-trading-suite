@@ -140,23 +140,33 @@ class LiquidityManager:
             calculated_amount1 = amount1_desired
         else:
             position_type = "in_range"
-            # Calculate optimal ratio
-            sqrt_price = sqrt_price_x96 / (2 ** 96)
-            sqrt_pl = 1.0001 ** (tick_lower / 2)
-            sqrt_pu = 1.0001 ** (tick_upper / 2)
+            # Calculate optimal ratio using decimal-adjusted sqrt prices
+            # Raw sqrt values from ticks don't account for decimal differences
+            sqrt_price_raw = sqrt_price_x96 / (2 ** 96)
+            sqrt_pl_raw = 1.0001 ** (tick_lower / 2)
+            sqrt_pu_raw = 1.0001 ** (tick_upper / 2)
+
+            # Adjust for decimal differences between tokens
+            # This converts from wei-based ratios to human-readable ratios
+            decimal_adjustment = 10 ** ((token0_contract.decimals - token1_contract.decimals) / 2)
+            sqrt_price = sqrt_price_raw * decimal_adjustment
+            sqrt_pl = sqrt_pl_raw * decimal_adjustment
+            sqrt_pu = sqrt_pu_raw * decimal_adjustment
 
             # Ratio of token1 to token0 needed
             # Based on Uniswap V3 liquidity math
             if amount0_desired is not None:
                 # Calculate how much token1 is needed for given token0
                 calculated_amount0 = amount0_desired
-                # Formula: amount1 = amount0 * (sqrt_price - sqrt_pl) / ((1/sqrt_price - 1/sqrt_pu))
+                # L = amount0 / (1/sqrt_price - 1/sqrt_pu)
+                # amount1 = L * (sqrt_price - sqrt_pl)
                 calculated_amount1 = amount0_desired * \
                     (sqrt_price - sqrt_pl) / (1/sqrt_price - 1/sqrt_pu)
             else:
                 # Calculate how much token0 is needed for given token1
                 calculated_amount1 = amount1_desired
-                # Formula: amount0 = amount1 * (1/sqrt_price - 1/sqrt_pu) / (sqrt_price - sqrt_pl)
+                # L = amount1 / (sqrt_price - sqrt_pl)
+                # amount0 = L * (1/sqrt_price - 1/sqrt_pu)
                 calculated_amount0 = amount1_desired * \
                     (1/sqrt_price - 1/sqrt_pu) / (sqrt_price - sqrt_pl)
 

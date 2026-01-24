@@ -98,10 +98,69 @@ def cmd_query_balances(args):
     print(f"\nSaved to {filepath}", file=sys.stderr)
 
 
+def cmd_lp_quote(args):
+    """Get quote for liquidity position - how much of each token is needed"""
+    from ..core.connection import Web3Manager
+    web3_manager = Web3Manager(require_signer=False)
+    manager = LiquidityManager(manager=web3_manager)
+
+    # Determine which amount was provided
+    amount0 = getattr(args, 'amount0', None)
+    amount1 = getattr(args, 'amount1', None)
+
+    result = manager.calculate_optimal_amounts_range(
+        token0=args.token0,
+        token1=args.token1,
+        fee=args.fee,
+        percent_lower=args.range_lower,
+        percent_upper=args.range_upper,
+        amount0_desired=amount0,
+        amount1_desired=amount1,
+    )
+
+    # Compact trader-friendly output
+    t0 = result['token0']['symbol']
+    t1 = result['token1']['symbol']
+    range_str = f"{args.range_lower*100:+.1f}% to {args.range_upper*100:+.1f}%"
+
+    print("=" * 60)
+    print(f"LP QUOTE: {t0}/{t1} pool ({args.fee/10000:.2f}% fee)")
+    print("=" * 60)
+
+    print(f"\n  Range: {range_str} around current price")
+    print(f"  Current price: {result['current_price']:.2f} {t1}/{t0}")
+    print(f"  Price range: {result['price_lower']:.2f} - {result['price_upper']:.2f} {t1}/{t0}")
+
+    print(f"\n  YOU NEED:")
+    print(f"    {result['token0']['amount']:.6f} {t0}")
+    print(f"    {result['token1']['amount']:.6f} {t1}")
+
+    # Calculate total value
+    total_value = result['token0']['amount'] * result['current_price'] + result['token1']['amount']
+    print(f"\n  Total value: ~{total_value:.2f} {t1}")
+
+    if result['position_type'] == 'in_range':
+        print(f"\n  Status: IN RANGE (will earn fees immediately)")
+    elif result['position_type'] == 'below_range':
+        print(f"\n  WARNING: Price is BELOW your range")
+        print(f"  Only {t0} needed. Position inactive until price drops.")
+    else:
+        print(f"\n  WARNING: Price is ABOVE your range")
+        print(f"  Only {t1} needed. Position inactive until price rises.")
+
+    print("\n" + "=" * 60)
+
+    # Save result
+    result['range_percent'] = {'lower': args.range_lower, 'upper': args.range_upper}
+    result['total_value_in_token1'] = total_value
+    filepath = save_result(f"lp_quote_{t0}_{t1}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
 def cmd_calculate_amounts(args):
-    """Calculate optimal token amounts for a position"""
+    """Calculate optimal token amounts for a position (legacy command)"""
     manager = LiquidityManager()
-    
+
     # Use either ticks or percentage range
     if hasattr(args, 'percent_lower'):
         # Percentage-based
@@ -127,33 +186,33 @@ def cmd_calculate_amounts(args):
             amount1_desired=args.amount1 if args.amount1 else None,
         )
         print(f"Calculating amounts for tick range {args.tick_lower} to {args.tick_upper}")
-    
+
     print("=" * 70)
-    print(f"\n📊 POSITION DETAILS")
+    print(f"\nPOSITION DETAILS")
     print(f"  Pool: {result['token0']['symbol']}/{result['token1']['symbol']} ({args.fee/10000:.2f}% fee)")
     print(f"  Current Price: {result['current_price']:.6f} {result['token1']['symbol']}/{result['token0']['symbol']}")
     print(f"  Price Range: {result['price_lower']:.6f} to {result['price_upper']:.6f}")
     print(f"  Position Status: {result['position_type'].replace('_', ' ').title()}")
-    
-    print(f"\n💰 OPTIMAL AMOUNTS")
+
+    print(f"\nOPTIMAL AMOUNTS")
     print(f"  {result['token0']['symbol']}: {result['token0']['amount']:.6f}")
     print(f"  {result['token1']['symbol']}: {result['token1']['amount']:.6f}")
-    
+
     if result['position_type'] == 'in_range':
-        print(f"\n📈 RATIO")
+        print(f"\nRATIO")
         print(f"  {result['ratio']}")
-        print(f"\n💡 TIP: Both tokens are needed since current price is in range")
+        print(f"\nTIP: Both tokens are needed since current price is in range")
     elif result['position_type'] == 'below_range':
-        print(f"\n⚠️  WARNING: Current price is BELOW your range")
+        print(f"\nWARNING: Current price is BELOW your range")
         print(f"  Only {result['token0']['symbol']} is needed")
         print(f"  Position will be inactive until price drops into range")
     else:  # above_range
-        print(f"\n⚠️  WARNING: Current price is ABOVE your range")
+        print(f"\nWARNING: Current price is ABOVE your range")
         print(f"  Only {result['token1']['symbol']} is needed")
         print(f"  Position will be inactive until price rises into range")
-    
+
     print("\n" + "=" * 70)
-    
+
     # Save to JSON
     print("\n" + json.dumps(result, indent=2, default=str))
     filename = f"calculate_amounts_{result['token0']['symbol']}_{result['token1']['symbol']}.json"
@@ -332,11 +391,53 @@ def cmd_wallet_generate(args):
     print("\nSECURITY: Keep this file safe and never share it!")
 
 
+def cmd_quote(args):
+    """Get swap quote without executing"""
+    manager = SwapManager(require_signer=False)
+
+    result = manager.quote(
+        token_in=args.token_in,
+        token_out=args.token_out,
+        pool_name=args.pool,
+        amount_in=args.amount,
+    )
+
+    # Compact output for traders
+    print("=" * 60)
+    print(f"QUOTE: {args.amount} {result['token_in']['symbol']} -> {result['token_out']['symbol']}")
+    print("=" * 60)
+    print(f"\n  Expected output: {result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+    print(f"  Price: {result['price']['rate_formatted']}")
+    print(f"  Pool: {result['pool']} ({result['fee_percent']} fee)")
+    print(f"\n  Gas estimate: {result['gas']['estimate']} units")
+    print(f"  Gas price: {result['gas']['price_gwei']:.2f} gwei")
+    print(f"  Gas cost: {result['gas']['cost_eth']:.6f} ETH")
+
+    if result['token_in']['sufficient_balance'] is False:
+        print(f"\n  WARNING: Insufficient balance!")
+        print(f"  Have: {result['token_in']['balance']:.6f} {result['token_in']['symbol']}")
+        print(f"  Need: {args.amount} {result['token_in']['symbol']}")
+    elif result['token_in']['sufficient_balance'] is None:
+        print(f"\n  Note: Balance check skipped (no wallet configured)")
+
+    print("\n" + "=" * 60)
+
+    # Also output JSON
+    print("\n" + json.dumps(result, indent=2, default=str))
+    filepath = save_result(f"quote_{result['token_in']['symbol']}_{result['token_out']['symbol']}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
 def cmd_swap(args):
     """Execute token swap"""
     manager = SwapManager()
 
-    print(f"Swapping {args.amount} {args.token_in} -> {args.token_out}")
+    dry_run = getattr(args, 'dry_run', False)
+
+    if dry_run:
+        print(f"[DRY RUN] Simulating swap: {args.amount} {args.token_in} -> {args.token_out}")
+    else:
+        print(f"Swapping {args.amount} {args.token_in} -> {args.token_out}")
     print(f"Pool: {args.pool}, Slippage: {args.slippage} bps")
     if args.max_gas_price:
         print(f"Max gas price: {args.max_gas_price} gwei")
@@ -349,17 +450,42 @@ def cmd_swap(args):
         slippage_bps=args.slippage,
         max_gas_price_gwei=args.max_gas_price,
         deadline_minutes=args.deadline,
+        dry_run=dry_run,
     )
 
-    print(f"\nSuccess!")
-    print(f"Tx: {result['tx_hash']}")
-    print(f"Block: {result['block']}")
-    print(f"In:  {result['token_in']['amount']} {result['token_in']['symbol']}")
-    if result['token_out']['expected_amount']:
-        print(f"Out: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
-    print(f"Gas used: {result['gas_used']}")
+    if dry_run:
+        # Compact dry-run output
+        print("\n" + "=" * 60)
+        print("DRY RUN RESULT - No transaction sent")
+        print("=" * 60)
+        print(f"\n  Would swap: {result['token_in']['amount']} {result['token_in']['symbol']}")
+        print(f"  Would receive: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+        print(f"  Minimum output: {result['token_out']['min_amount']:.6f} {result['token_out']['symbol']} (after {result['slippage_bps']/100}% slippage)")
+        print(f"  Price: {result['price']['formatted']}")
+        print(f"\n  Gas estimate: {result['gas']['estimate']} units")
+        print(f"  Gas cost: ~{result['gas']['cost_eth']:.6f} ETH")
 
-    filepath = save_result(f"swap_{result['tx_hash'][:10]}.json", result)
+        if not result['token_in'].get('sufficient_balance', True):
+            print(f"\n  WARNING: Insufficient balance!")
+            print(f"  Have: {result['token_in']['balance']:.6f} {result['token_in']['symbol']}")
+            print(f"  Need: {result['token_in']['amount']} {result['token_in']['symbol']}")
+
+        print("\n" + "=" * 60)
+        print("\nTo execute this swap, run without --dry-run")
+    else:
+        print(f"\nSuccess!")
+        print(f"Tx: {result['tx_hash']}")
+        print(f"Block: {result['block']}")
+        print(f"In:  {result['token_in']['amount']} {result['token_in']['symbol']}")
+        if result['token_out']['expected_amount']:
+            print(f"Out: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+        print(f"Gas used: {result['gas_used']}")
+
+    # Save result
+    if dry_run:
+        filepath = save_result(f"swap_dryrun_{result['token_in']['symbol']}_{result['token_out']['symbol']}.json", result)
+    else:
+        filepath = save_result(f"swap_{result['tx_hash'][:10]}.json", result)
     print(f"\nSaved to {filepath}", file=sys.stderr)
 
 
@@ -472,6 +598,25 @@ def main():
     wallet_gen_parser.add_argument("--accounts", type=int, default=3, help="Number of accounts to derive")
     wallet_gen_parser.set_defaults(func=cmd_wallet_generate)
 
+    # Quote command for SWAPS (check price without executing)
+    quote_parser = subparsers.add_parser("quote", help="Get SWAP quote - check price before trading")
+    quote_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
+    quote_parser.add_argument("token_out", help="Token to receive (symbol or address)")
+    quote_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
+    quote_parser.add_argument("amount", type=float, help="Amount of token_in to quote")
+    quote_parser.set_defaults(func=cmd_quote)
+
+    # LP Quote command for LIQUIDITY (calculate token amounts needed)
+    lp_quote_parser = subparsers.add_parser("lp-quote", help="Get LP quote - calculate tokens needed for liquidity position")
+    lp_quote_parser.add_argument("token0", help="First token (e.g., WETH)")
+    lp_quote_parser.add_argument("token1", help="Second token (e.g., USDT)")
+    lp_quote_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    lp_quote_parser.add_argument("range_lower", type=float, help="Lower bound as decimal (e.g., -0.05 for -5%%)")
+    lp_quote_parser.add_argument("range_upper", type=float, help="Upper bound as decimal (e.g., 0.05 for +5%%)")
+    lp_quote_parser.add_argument("--amount0", type=float, help="Amount of token0 you have")
+    lp_quote_parser.add_argument("--amount1", type=float, help="Amount of token1 you have")
+    lp_quote_parser.set_defaults(func=cmd_lp_quote)
+
     # Swap command
     swap_parser = subparsers.add_parser("swap", help="Swap tokens")
     swap_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
@@ -481,6 +626,7 @@ def main():
     swap_parser.add_argument("--slippage", type=int, default=50, help="Slippage in basis points (default: 50 = 0.5%%)")
     swap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
     swap_parser.add_argument("--deadline", type=int, default=30, help="Transaction deadline in minutes (default: 30)")
+    swap_parser.add_argument("--dry-run", action="store_true", help="Simulate swap without executing")
     swap_parser.set_defaults(func=cmd_swap)
 
     args = parser.parse_args()

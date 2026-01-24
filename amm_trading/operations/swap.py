@@ -15,15 +15,18 @@ class SwapManager:
     # WETH address for ETH wrapping
     WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
 
-    def __init__(self, manager=None):
+    def __init__(self, manager=None, require_signer=True):
         """
         Args:
             manager: Web3Manager instance (created with signer if None)
+            require_signer: If True, require private key for transactions
         """
-        self.manager = manager or Web3Manager(require_signer=True)
+        self.manager = manager or Web3Manager(require_signer=require_signer)
         self.config = Config()
         self.router_address = self.manager.checksum(self.config.router_address)
         self.router = self.manager.get_contract(self.router_address, "uniswap_v3_router")
+        self.quoter_address = self.manager.checksum(self.config.quoter_address)
+        self.quoter = self.manager.get_contract(self.quoter_address, "uniswap_v3_quoter")
 
     def _parse_pool_name(self, pool_name):
         """
@@ -49,6 +52,107 @@ class SwapManager:
             return self.WETH
         return self.manager.checksum(self.config.get_token_address(symbol))
 
+    def quote(self, token_in, token_out, pool_name, amount_in):
+        """
+        Get a quote for a swap without executing.
+
+        Uses the QuoterV2 contract for accurate quotes without requiring token balances.
+
+        Args:
+            token_in: Token to send (symbol or address)
+            token_out: Token to receive (symbol or address)
+            pool_name: Pool name in format 'TOKEN0_TOKEN1_FEE'
+            amount_in: Amount of token_in to swap (human readable)
+
+        Returns:
+            Dict with quote details including expected output, price, and gas estimate
+        """
+        # Parse pool name to get fee
+        pool_token0, pool_token1, fee = self._parse_pool_name(pool_name)
+
+        # Resolve token addresses
+        token_in_addr = self._get_token_address(token_in)
+        token_out_addr = self._get_token_address(token_out)
+
+        # Create token contracts
+        token_in_contract = ERC20(self.manager, token_in_addr)
+        token_out_contract = ERC20(self.manager, token_out_addr)
+
+        # Convert amount to wei
+        amount_in_wei = token_in_contract.to_wei(amount_in)
+
+        # Check balance (informational only)
+        try:
+            balance = token_in_contract.balance_of()
+            has_sufficient_balance = balance >= amount_in_wei
+            balance_human = token_in_contract.from_wei(balance)
+        except Exception:
+            # Can't check balance (no signer), that's fine for quotes
+            balance = 0
+            has_sufficient_balance = None
+            balance_human = None
+
+        # Build quote params for QuoterV2
+        quote_params = (
+            token_in_addr,      # tokenIn
+            token_out_addr,     # tokenOut
+            amount_in_wei,      # amountIn
+            fee,                # fee
+            0,                  # sqrtPriceLimitX96 (0 = no limit)
+        )
+
+        # Get quote from QuoterV2 (this is a static call, no gas needed)
+        try:
+            result = self.quoter.functions.quoteExactInputSingle(quote_params).call()
+            expected_out = result[0]       # amountOut
+            sqrt_price_after = result[1]   # sqrtPriceX96After
+            ticks_crossed = result[2]      # initializedTicksCrossed
+            gas_estimate = result[3]       # gasEstimate
+        except Exception as e:
+            raise ValueError(f"Quote failed: {e}")
+
+        # Calculate price
+        amount_out_human = token_out_contract.from_wei(expected_out)
+        price = amount_out_human / amount_in if amount_in > 0 else 0
+        inverse_price = amount_in / amount_out_human if amount_out_human > 0 else 0
+
+        # Get current gas price
+        gas_price = self.manager.get_gas_price()
+        # Add buffer for swap execution overhead
+        total_gas_estimate = gas_estimate + 50000  # Add overhead for approval + swap tx
+        gas_cost_wei = total_gas_estimate * gas_price
+        gas_cost_eth = float(Web3.from_wei(gas_cost_wei, "ether"))
+
+        return {
+            "token_in": {
+                "symbol": token_in_contract.symbol,
+                "address": token_in_addr,
+                "amount": amount_in,
+                "balance": balance_human,
+                "sufficient_balance": has_sufficient_balance,
+            },
+            "token_out": {
+                "symbol": token_out_contract.symbol,
+                "address": token_out_addr,
+                "expected_amount": amount_out_human,
+            },
+            "price": {
+                "rate": price,
+                "rate_formatted": f"1 {token_in_contract.symbol} = {price:.6f} {token_out_contract.symbol}",
+                "inverse": inverse_price,
+                "inverse_formatted": f"1 {token_out_contract.symbol} = {inverse_price:.6f} {token_in_contract.symbol}",
+            },
+            "pool": pool_name,
+            "fee": fee,
+            "fee_percent": f"{fee/10000}%",
+            "ticks_crossed": ticks_crossed,
+            "gas": {
+                "estimate": total_gas_estimate,
+                "price_gwei": float(Web3.from_wei(gas_price, "gwei")),
+                "cost_eth": gas_cost_eth,
+            },
+        }
+
     def swap(
         self,
         token_in,
@@ -58,6 +162,7 @@ class SwapManager:
         slippage_bps=50,
         max_gas_price_gwei=None,
         deadline_minutes=30,
+        dry_run=False,
     ):
         """
         Swap tokens using a specific pool.
@@ -70,6 +175,7 @@ class SwapManager:
             slippage_bps: Slippage tolerance in basis points (default: 50 = 0.5%)
             max_gas_price_gwei: Maximum gas price in gwei (None = use current)
             deadline_minutes: Transaction deadline in minutes (default: 30)
+            dry_run: If True, simulate the swap without executing (default: False)
 
         Returns:
             Dict with transaction details and amounts
@@ -90,7 +196,9 @@ class SwapManager:
 
         # Check balance
         balance = token_in_contract.balance_of()
-        if balance < amount_in_wei:
+        has_sufficient_balance = balance >= amount_in_wei
+
+        if not has_sufficient_balance and not dry_run:
             raise InsufficientBalanceError(
                 f"Insufficient {token_in_contract.symbol} balance. "
                 f"Have: {token_in_contract.from_wei(balance):.6f}, Need: {amount_in}"
@@ -114,29 +222,22 @@ class SwapManager:
         else:
             gas_price = current_gas_price
 
-        # Approve router to spend tokens
-        approval = token_in_contract.approve(self.router_address, amount_in_wei)
-
         # Build swap params
         deadline = int(time.time()) + (deadline_minutes * 60)
 
-        swap_params = (
-            token_in_addr,           # tokenIn
-            token_out_addr,          # tokenOut
-            fee,                     # fee
-            self.manager.address,    # recipient
-            deadline,                # deadline
-            amount_in_wei,           # amountIn
-            amount_out_min,          # amountOutMinimum (0 for now, will estimate)
-            0,                       # sqrtPriceLimitX96 (0 = no limit)
+        # Use Quoter to get expected output (works without token approval)
+        quote_params = (
+            token_in_addr,      # tokenIn
+            token_out_addr,     # tokenOut
+            amount_in_wei,      # amountIn
+            fee,                # fee
+            0,                  # sqrtPriceLimitX96 (0 = no limit)
         )
 
-        # Estimate gas and get expected output
-        # First, simulate the swap to get expected output
         try:
-            expected_out = self.router.functions.exactInputSingle(swap_params).call({
-                "from": self.manager.address
-            })
+            quote_result = self.quoter.functions.quoteExactInputSingle(quote_params).call()
+            expected_out = quote_result[0]       # amountOut
+            gas_estimate = quote_result[3]       # gasEstimate from quoter
         except Exception as e:
             raise ValueError(
                 f"Failed to estimate swap output. The swap may fail due to: "
@@ -158,27 +259,60 @@ class SwapManager:
                 f"Expected output too small or slippage too high."
             )
 
-        # Rebuild params with actual minimum
-        swap_params = (
-            token_in_addr,
-            token_out_addr,
-            fee,
-            self.manager.address,
-            deadline,
-            amount_in_wei,
-            amount_out_min,
-            0,
-        )
+        # Add overhead for approval + swap execution
+        gas_estimate = gas_estimate + 80000
 
-        # Estimate gas
-        try:
-            gas_estimate = self.router.functions.exactInputSingle(swap_params).estimate_gas({
-                "from": self.manager.address
-            })
-        except Exception as e:
-            raise ValueError(
-                f"Failed to estimate gas. The swap may revert. Error: {e}"
-            )
+        # Calculate gas cost
+        gas_cost_wei = gas_estimate * gas_price
+        gas_cost_eth = float(Web3.from_wei(gas_cost_wei, "ether"))
+
+        # If dry_run, return simulation results without executing
+        if dry_run:
+            return {
+                "dry_run": True,
+                "status": "SIMULATION - No transaction sent",
+                "token_in": {
+                    "symbol": token_in_contract.symbol,
+                    "address": token_in_addr,
+                    "amount": amount_in,
+                    "amount_wei": str(amount_in_wei),
+                    "balance": token_in_contract.from_wei(balance),
+                    "sufficient_balance": has_sufficient_balance,
+                },
+                "token_out": {
+                    "symbol": token_out_contract.symbol,
+                    "address": token_out_addr,
+                    "expected_amount": token_out_contract.from_wei(expected_out),
+                    "min_amount": token_out_contract.from_wei(amount_out_min),
+                },
+                "price": {
+                    "rate": token_out_contract.from_wei(expected_out) / amount_in if amount_in > 0 else 0,
+                    "formatted": f"1 {token_in_contract.symbol} = {token_out_contract.from_wei(expected_out) / amount_in:.6f} {token_out_contract.symbol}" if amount_in > 0 else "N/A",
+                },
+                "pool": pool_name,
+                "fee": fee,
+                "slippage_bps": slippage_bps,
+                "gas": {
+                    "estimate": gas_estimate,
+                    "price_gwei": float(Web3.from_wei(gas_price, "gwei")),
+                    "cost_eth": gas_cost_eth,
+                },
+            }
+
+        # Approve router to spend tokens (only if not dry_run)
+        token_in_contract.approve(self.router_address, amount_in_wei)
+
+        # Build router swap params
+        swap_params = (
+            token_in_addr,           # tokenIn
+            token_out_addr,          # tokenOut
+            fee,                     # fee
+            self.manager.address,    # recipient
+            deadline,                # deadline
+            amount_in_wei,           # amountIn
+            amount_out_min,          # amountOutMinimum
+            0,                       # sqrtPriceLimitX96 (0 = no limit)
+        )
 
         # Build transaction
         tx = self.router.functions.exactInputSingle(swap_params).build_transaction({
