@@ -48,8 +48,12 @@ class Web3Manager:
 
     @property
     def address(self):
-        """Get account address (if signer loaded)"""
-        return self.account.address if self.account else None
+        """Get account address (from signer or PUBLIC_KEY in wallet.env)"""
+        if self.account:
+            return self.account.address
+        # Fall back to PUBLIC_KEY for read-only operations
+        public_key = os.getenv("PUBLIC_KEY")
+        return public_key if public_key else None
 
     @property
     def chain_id(self):
