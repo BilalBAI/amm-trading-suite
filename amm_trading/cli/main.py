@@ -581,14 +581,14 @@ def main():
     pools_parser.add_argument("--refresh-cache", action="store_true", help="Force refresh static pool data cache")
     pools_parser.set_defaults(func=cmd_query_pools)
 
-    # query position
-    pos_parser = query_sub.add_parser("position", help="Query position info")
-    pos_parser.add_argument("token_id", type=int, help="Position token ID")
+    # query univ3 position
+    pos_parser = query_sub.add_parser("univ3-position", help="Query Uniswap V3 position by NFT token ID")
+    pos_parser.add_argument("token_id", type=int, help="Position NFT token ID")
     pos_parser.set_defaults(func=cmd_query_position)
 
-    # query positions (for address)
-    positions_parser = query_sub.add_parser("positions", help="Query all positions for address")
-    positions_parser.add_argument("--address", help="Address to query")
+    # query univ3 positions (for address)
+    positions_parser = query_sub.add_parser("univ3-positions", help="Query all Uniswap V3 positions for address")
+    positions_parser.add_argument("--address", help="Address to query (default: wallet.env)")
     positions_parser.set_defaults(func=cmd_query_positions)
 
     # query balances

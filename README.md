@@ -38,7 +38,7 @@ PRIVATE_KEY=your_private_key_here
 
 All gas parameters are centrally controlled via `gas_config.json`. This file must exist in one of these locations (searched in order):
 - Current working directory
-- `~/.amm-tools/gas_config.json`
+- `~/.amm-trading-suite/gas_config.json`
 - Package root directory
 
 ### Configuration File
@@ -89,39 +89,6 @@ Where:
 2. **Cost ceiling**: Your maximum spend is always `gasLimit × maxFeePerGas`.
 3. **Unused gas refund**: You only pay for `gasUsed`, not the full `gasLimit`.
 
-### Example Configurations
-
-**Conservative (low fees, may be slow):**
-```json
-{
-    "maxFeePerGas": 30,
-    "maxPriorityFeePerGas": 1
-}
-```
-
-**Balanced (reasonable fees and speed):**
-```json
-{
-    "maxFeePerGas": 50,
-    "maxPriorityFeePerGas": 1.5
-}
-```
-
-**Aggressive (fast inclusion, higher cost):**
-```json
-{
-    "maxFeePerGas": 100,
-    "maxPriorityFeePerGas": 3
-}
-```
-
-**No limit (use current network rate):**
-```json
-{
-    "maxFeePerGas": null,
-    "maxPriorityFeePerGas": 1.5
-}
-```
 
 ## Usage
 
@@ -138,10 +105,10 @@ amm-trading query pools --refresh-cache
 amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
 
 # Query a position
-amm-trading query position 1157630
+amm-trading query univ3-position 1157630
 
 # Query all positions for an address
-amm-trading query positions --address 0x123...
+amm-trading query univ3-positions --address 0x123...
 
 # Query ETH and token balances for an address
 amm-trading query balances --address 0x123...
@@ -407,8 +374,8 @@ All CLI commands save results to the `results/` folder:
 | Command | Output File |
 |---------|-------------|
 | `query pools` | `results/univ3_pools.json` |
-| `query position <id>` | `results/univ3_position_<id>.json` |
-| `query positions` | `results/positions_<address>.json` |
+| `query univ3-position <id>` | `results/univ3_position_<id>.json` |
+| `query univ3-positions` | `results/positions_<address>.json` |
 | `query balances` | `results/balances_<address>.json` |
 | `add ...` | `results/add_liquidity_<id>.json` |
 | `remove ...` | `results/remove_liquidity_<id>.json` |
