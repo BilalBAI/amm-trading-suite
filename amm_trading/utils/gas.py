@@ -85,39 +85,31 @@ class GasManager:
     """
     EIP-1559 compliant gas management.
 
+    All gas parameters are centrally controlled via gas_config.json.
+
     Supports:
     - maxFeePerGas: Maximum total fee per gas unit (base + priority)
     - maxPriorityFeePerGas: Tip to validators for faster inclusion
     - gasLimit: Maximum gas units per transaction type
     """
 
-    def __init__(self, manager, maxFeePerGas=None, maxPriorityFeePerGas=None, config=None):
+    def __init__(self, manager, config=None):
         """
         Args:
             manager: Web3Manager instance
-            maxFeePerGas: Max fee per gas in Gwei (overrides config)
-            maxPriorityFeePerGas: Priority fee in Gwei (overrides config)
-            config: GasConfig instance (created if None)
+            config: GasConfig instance (created if None, loads from gas_config.json)
         """
         self.manager = manager
         self.config = config or GasConfig()
 
-        # CLI overrides take precedence over config file
-        self._maxFeePerGas = maxFeePerGas
-        self._maxPriorityFeePerGas = maxPriorityFeePerGas
-
     @property
     def maxFeePerGas(self):
-        """Get maxFeePerGas in Gwei (CLI override > config > None)"""
-        if self._maxFeePerGas is not None:
-            return self._maxFeePerGas
+        """Get maxFeePerGas in Gwei from config (None = no limit)"""
         return self.config.maxFeePerGas
 
     @property
     def maxPriorityFeePerGas(self):
-        """Get maxPriorityFeePerGas in Gwei (CLI override > config)"""
-        if self._maxPriorityFeePerGas is not None:
-            return self._maxPriorityFeePerGas
+        """Get maxPriorityFeePerGas in Gwei from config"""
         return self.config.maxPriorityFeePerGas
 
     def getGasLimit(self, operation_type=None):

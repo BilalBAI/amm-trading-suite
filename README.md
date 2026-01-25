@@ -26,10 +26,102 @@ RPC_URL=https://mainnet.infura.io/v3/YOUR_API_KEY
 
 2. For transactions, create a `wallet.env` file:
 ```env
+PUBLIC_KEY=your_public_key_here
 PRIVATE_KEY=your_private_key_here
 ```
 
 > **Warning:** Never commit `wallet.env` to version control!
+
+3. Configure gas parameters in `gas_config.json` (see [Gas Management](#gas-management) below).
+
+## Gas Management
+
+All gas parameters are centrally controlled via `gas_config.json`. This file must exist in one of these locations (searched in order):
+- Current working directory
+- `~/.amm-tools/gas_config.json`
+- Package root directory
+
+### Configuration File
+
+```json
+{
+    "maxFeePerGas": null,
+    "maxPriorityFeePerGas": 1.5,
+    "gasLimit": {
+        "approve": 65000,
+        "transfer": 65000,
+        "mint": 500000,
+        "increaseLiquidity": 400000,
+        "decreaseLiquidity": 200000,
+        "collect": 150000,
+        "burn": 100000,
+        "swap": 200000,
+        "swapMultihop": 350000,
+        "wrap": 50000,
+        "unwrap": 50000,
+        "default": 500000
+    }
+}
+```
+
+### EIP-1559 Parameters Explained
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `gasLimit` | Maximum gas units per transaction type. Transaction fails if exceeded. | `500000` |
+| `maxFeePerGas` | Maximum total fee (base + priority) per gas unit in Gwei. Set to `null` for no limit. | `50` (50 Gwei max) |
+| `maxPriorityFeePerGas` | Tip to validators in Gwei. Higher = faster inclusion. | `1.5` (1.5 Gwei tip) |
+
+### How Gas Cost Is Calculated
+
+```
+Maximum Cost = gasLimit × maxFeePerGas
+Actual Cost  = gasUsed × (baseFee + priorityFee)
+```
+
+Where:
+- `baseFee` is set by the network (you cannot control it)
+- `priorityFee` = min(maxPriorityFeePerGas, maxFeePerGas - baseFee)
+
+### Protection Mechanisms
+
+1. **Transaction rejection**: If `baseFee > maxFeePerGas`, the transaction is rejected before sending (your funds are safe).
+2. **Cost ceiling**: Your maximum spend is always `gasLimit × maxFeePerGas`.
+3. **Unused gas refund**: You only pay for `gasUsed`, not the full `gasLimit`.
+
+### Example Configurations
+
+**Conservative (low fees, may be slow):**
+```json
+{
+    "maxFeePerGas": 30,
+    "maxPriorityFeePerGas": 1
+}
+```
+
+**Balanced (reasonable fees and speed):**
+```json
+{
+    "maxFeePerGas": 50,
+    "maxPriorityFeePerGas": 1.5
+}
+```
+
+**Aggressive (fast inclusion, higher cost):**
+```json
+{
+    "maxFeePerGas": 100,
+    "maxPriorityFeePerGas": 3
+}
+```
+
+**No limit (use current network rate):**
+```json
+{
+    "maxFeePerGas": null,
+    "maxPriorityFeePerGas": 1.5
+}
+```
 
 ## Usage
 
@@ -99,12 +191,17 @@ amm-trading swap WETH USDT WETH_USDT_30 0.1
 # Swap with custom slippage (1% = 100 basis points)
 amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
 
-# Swap with max gas price limit
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --max-gas-price 50
-
 # Swap with custom deadline (60 minutes)
 amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
+
+# Wrap ETH to WETH
+amm-trading wrap 0.1
+
+# Unwrap WETH to ETH
+amm-trading unwrap 0.1
 ```
+
+> **Note:** Gas parameters (maxFeePerGas, maxPriorityFeePerGas, gasLimit) are controlled via `gas_config.json`. See [Gas Management](#gas-management).
 
 All results are automatically saved to the `results/` folder.
 
@@ -203,6 +300,7 @@ for acc in wallet["accounts"]:
     print(f"Account {acc['index']}: {acc['address']}")
 
 # Swap tokens (requires wallet.env)
+# Gas params loaded from gas_config.json
 swap = SwapManager()
 result = swap.swap(
     token_in="WETH",
@@ -210,10 +308,16 @@ result = swap.swap(
     pool_name="WETH_USDT_30",
     amount_in=0.1,
     slippage_bps=50,  # 0.5%
-    max_gas_price_gwei=50,  # Optional
 )
 print(f"Tx: {result['tx_hash']}")
 print(f"Swapped {result['token_in']['amount']} {result['token_in']['symbol']}")
+
+# Wrap/Unwrap ETH (requires wallet.env)
+from amm_trading.contracts import WETH
+manager = Web3Manager(require_signer=True)
+weth = WETH(manager)
+weth.deposit(0.1)   # Wrap 0.1 ETH to WETH
+weth.withdraw(0.1)  # Unwrap 0.1 WETH to ETH
 ```
 
 ### Low-level Contract Access
@@ -254,7 +358,8 @@ amm_trading/
 ├── contracts/
 │   ├── erc20.py         # ERC20 token wrapper
 │   ├── nfpm.py          # NonfungiblePositionManager wrapper
-│   └── pool.py          # Uniswap V3 Pool wrapper
+│   ├── pool.py          # Uniswap V3 Pool wrapper
+│   └── weth.py          # WETH wrap/unwrap operations
 ├── operations/
 │   ├── balances.py      # Query token balances
 │   ├── liquidity.py     # Add/remove/migrate liquidity
@@ -263,6 +368,7 @@ amm_trading/
 │   ├── swap.py          # Token swap operations
 │   └── wallet.py        # Wallet generation
 ├── utils/
+│   ├── gas.py           # EIP-1559 gas management
 │   ├── math.py          # Tick/price calculations
 │   └── transactions.py  # Transaction helpers
 └── cli/

@@ -19,12 +19,12 @@ class WETH(ERC20):
         8453: "0x4200000000000000000000000000000000000006",    # Base
     }
 
-    def __init__(self, manager, maxFeePerGas=None, maxPriorityFeePerGas=None):
+    def __init__(self, manager):
         """
         Args:
             manager: Web3Manager instance
-            maxFeePerGas: Maximum fee per gas in Gwei (None = use config/no limit)
-            maxPriorityFeePerGas: Priority fee in Gwei (None = use config)
+
+        Gas parameters are loaded from gas_config.json.
         """
         chain_id = manager.chain_id
         if chain_id not in self.ADDRESSES:
@@ -36,7 +36,7 @@ class WETH(ERC20):
         # Override contract to use WETH ABI (has deposit/withdraw)
         self.contract = manager.get_contract(address, "weth")
 
-        self.gas_manager = GasManager(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
+        self.gas_manager = GasManager(manager)
         self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     def deposit(self, amount_eth):

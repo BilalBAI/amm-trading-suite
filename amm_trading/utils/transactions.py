@@ -6,23 +6,14 @@ from .gas import GasManager
 class TransactionBuilder:
     """Build and send EIP-1559 transactions with unified gas management"""
 
-    def __init__(self, manager, gas_manager=None, maxFeePerGas=None, maxPriorityFeePerGas=None):
+    def __init__(self, manager, gas_manager=None):
         """
         Args:
             manager: Web3Manager instance
-            gas_manager: GasManager instance (created if None)
-            maxFeePerGas: Max fee per gas in Gwei (overrides config)
-            maxPriorityFeePerGas: Priority fee in Gwei (overrides config)
+            gas_manager: GasManager instance (created if None, loads from gas_config.json)
         """
         self.manager = manager
-        if gas_manager is not None:
-            self.gas_manager = gas_manager
-        else:
-            self.gas_manager = GasManager(
-                manager,
-                maxFeePerGas=maxFeePerGas,
-                maxPriorityFeePerGas=maxPriorityFeePerGas
-            )
+        self.gas_manager = gas_manager or GasManager(manager)
 
     def build(self, contract_func, operation_type=None, gas_buffer=1.2, value=0):
         """

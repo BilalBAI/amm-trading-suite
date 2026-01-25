@@ -7,20 +7,20 @@ from ..utils.transactions import TransactionBuilder
 class ERC20:
     """Wrapper for ERC20 token interactions"""
 
-    def __init__(self, manager, address, maxFeePerGas=None, maxPriorityFeePerGas=None):
+    def __init__(self, manager, address):
         """
         Args:
             manager: Web3Manager instance
             address: Token contract address
-            maxFeePerGas: Maximum fee per gas in Gwei (None = use config/no limit)
-            maxPriorityFeePerGas: Priority fee in Gwei (None = use config)
+
+        Gas parameters are loaded from gas_config.json.
         """
         self.manager = manager
         self.address = manager.checksum(address)
         self.contract = manager.get_contract(address, "erc20")
         self._info = None
 
-        self.gas_manager = GasManager(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
+        self.gas_manager = GasManager(manager)
         self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     @property

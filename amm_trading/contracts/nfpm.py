@@ -11,19 +11,19 @@ from ..utils.transactions import TransactionBuilder
 class NFPM:
     """Wrapper for NonfungiblePositionManager interactions"""
 
-    def __init__(self, manager, maxFeePerGas=None, maxPriorityFeePerGas=None):
+    def __init__(self, manager):
         """
         Args:
             manager: Web3Manager instance
-            maxFeePerGas: Maximum fee per gas in Gwei (None = use config/no limit)
-            maxPriorityFeePerGas: Priority fee in Gwei (None = use config)
+
+        Gas parameters are loaded from gas_config.json.
         """
         self.manager = manager
         self.config = Config()
         self.address = manager.checksum(self.config.nfpm_address)
         self.contract = manager.get_contract(self.address, "uniswap_v3_nfpm")
 
-        self.gas_manager = GasManager(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
+        self.gas_manager = GasManager(manager)
         self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     def get_position(self, token_id):
