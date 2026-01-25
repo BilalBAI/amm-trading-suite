@@ -1,9 +1,7 @@
 {
     "description": "Gas configuration for AMM Trading Suite. All gas prices in Gwei, gasLimit in units.",
-
-    "maxFeePerGas": null,
-    "maxPriorityFeePerGas": 1.5,
-
+    "maxFeePerGas": 0.5,
+    "maxPriorityFeePerGas": 0.1,
     "gasLimit": {
         "approve": 65000,
         "transfer": 65000,
@@ -18,7 +16,6 @@
         "unwrap": 50000,
         "default": 500000
     },
-
     "notes": {
         "maxFeePerGas": "Maximum total fee per gas in Gwei. Set to null for no limit (use network rate). Example: 50 means max 50 Gwei per gas unit.",
         "maxPriorityFeePerGas": "Tip to validators in Gwei. Higher = faster inclusion. Typical values: 0.1-3 Gwei.",
