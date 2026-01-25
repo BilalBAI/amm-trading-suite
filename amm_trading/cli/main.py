@@ -12,6 +12,8 @@ from ..operations.liquidity import LiquidityManager
 from ..operations.wallet import generate_wallet
 from ..operations.swap import SwapManager
 from ..operations.balances import BalanceQuery
+from ..contracts.weth import WETH
+from ..core.connection import Web3Manager
 
 
 def get_results_dir():
@@ -100,7 +102,6 @@ def cmd_query_balances(args):
 
 def cmd_lp_quote(args):
     """Get quote for liquidity position - how much of each token is needed"""
-    from ..core.connection import Web3Manager
     web3_manager = Web3Manager(require_signer=False)
     manager = LiquidityManager(manager=web3_manager)
 
@@ -222,10 +223,13 @@ def cmd_calculate_amounts(args):
 
 def cmd_add_liquidity(args):
     """Add liquidity to pool"""
-    manager = LiquidityManager()
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = LiquidityManager(max_gas_price_gwei=max_gas)
 
     print(f"Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
     print(f"Fee: {args.fee}, Ticks: {args.tick_lower} to {args.tick_upper}")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
 
     result = manager.add_liquidity(
         token0=args.token0,
@@ -257,10 +261,13 @@ def cmd_add_liquidity(args):
 
 def cmd_add_liquidity_range(args):
     """Add liquidity using percentage range"""
-    manager = LiquidityManager()
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = LiquidityManager(max_gas_price_gwei=max_gas)
 
     print(f"Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
     print(f"Fee: {args.fee}, Range: {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}%")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
 
     result = manager.add_liquidity_range(
         token0=args.token0,
@@ -297,9 +304,12 @@ def cmd_add_liquidity_range(args):
 
 def cmd_remove_liquidity(args):
     """Remove liquidity from position"""
-    manager = LiquidityManager()
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = LiquidityManager(max_gas_price_gwei=max_gas)
 
     print(f"Removing {args.percentage}% liquidity from position {args.token_id}")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
 
     result = manager.remove_liquidity(
         token_id=args.token_id,
@@ -329,10 +339,13 @@ def cmd_remove_liquidity(args):
 
 def cmd_migrate_liquidity(args):
     """Migrate liquidity to new tick range"""
-    manager = LiquidityManager()
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = LiquidityManager(max_gas_price_gwei=max_gas)
 
     print(f"Migrating {args.percentage}% of position {args.token_id}")
     print(f"New range: {args.tick_lower} to {args.tick_upper}")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
 
     result = manager.migrate_liquidity(
         token_id=args.token_id,
@@ -426,6 +439,90 @@ def cmd_quote(args):
     print("\n" + json.dumps(result, indent=2, default=str))
     filepath = save_result(f"quote_{result['token_in']['symbol']}_{result['token_out']['symbol']}.json", result)
     print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_wrap(args):
+    """Wrap ETH to WETH"""
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = Web3Manager(require_signer=True)
+    weth = WETH(manager, max_gas_price_gwei=max_gas)
+
+    print(f"Wrapping {args.amount} ETH to WETH")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
+
+    # Show balances before
+    balances_before = weth.get_balances()
+    print(f"\nBefore:")
+    print(f"  ETH:  {balances_before['eth']['balance']:.6f}")
+    print(f"  WETH: {balances_before['weth']['balance']:.6f}")
+
+    receipt = weth.deposit(args.amount)
+
+    # Show balances after
+    balances_after = weth.get_balances()
+    print(f"\nAfter:")
+    print(f"  ETH:  {balances_after['eth']['balance']:.6f}")
+    print(f"  WETH: {balances_after['weth']['balance']:.6f}")
+
+    print(f"\nSuccess!")
+    print(f"Tx: {receipt.transactionHash.hex()}")
+    print(f"Gas used: {receipt.gasUsed}")
+
+    # Save result
+    save_data = {
+        "action": "wrap",
+        "amount": args.amount,
+        "tx_hash": receipt.transactionHash.hex(),
+        "block": receipt.blockNumber,
+        "gas_used": receipt.gasUsed,
+        "balances_before": balances_before,
+        "balances_after": balances_after,
+    }
+    filepath = save_result(f"wrap_{receipt.transactionHash.hex()[:10]}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
+
+
+def cmd_unwrap(args):
+    """Unwrap WETH to ETH"""
+    max_gas = getattr(args, 'max_gas_price', None)
+    manager = Web3Manager(require_signer=True)
+    weth = WETH(manager, max_gas_price_gwei=max_gas)
+
+    print(f"Unwrapping {args.amount} WETH to ETH")
+    if max_gas:
+        print(f"Max gas price: {max_gas} gwei")
+
+    # Show balances before
+    balances_before = weth.get_balances()
+    print(f"\nBefore:")
+    print(f"  ETH:  {balances_before['eth']['balance']:.6f}")
+    print(f"  WETH: {balances_before['weth']['balance']:.6f}")
+
+    receipt = weth.withdraw(args.amount)
+
+    # Show balances after
+    balances_after = weth.get_balances()
+    print(f"\nAfter:")
+    print(f"  ETH:  {balances_after['eth']['balance']:.6f}")
+    print(f"  WETH: {balances_after['weth']['balance']:.6f}")
+
+    print(f"\nSuccess!")
+    print(f"Tx: {receipt.transactionHash.hex()}")
+    print(f"Gas used: {receipt.gasUsed}")
+
+    # Save result
+    save_data = {
+        "action": "unwrap",
+        "amount": args.amount,
+        "tx_hash": receipt.transactionHash.hex(),
+        "block": receipt.blockNumber,
+        "gas_used": receipt.gasUsed,
+        "balances_before": balances_before,
+        "balances_after": balances_after,
+    }
+    filepath = save_result(f"unwrap_{receipt.transactionHash.hex()[:10]}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
 
 
 def cmd_swap(args):
@@ -556,7 +653,8 @@ def main():
     add_parser.add_argument("tick_upper", type=int, help="Upper tick")
     add_parser.add_argument("amount0", type=float, help="Amount of token0")
     add_parser.add_argument("amount1", type=float, help="Amount of token1")
-    add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %")
+    add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
+    add_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
     add_parser.set_defaults(func=cmd_add_liquidity)
 
     # Add liquidity with percentage range command
@@ -568,7 +666,8 @@ def main():
     add_range_parser.add_argument("percent_upper", type=float, help="Upper percentage (e.g., 0.05 for +5%%)")
     add_range_parser.add_argument("amount0", type=float, help="Amount of token0")
     add_range_parser.add_argument("amount1", type=float, help="Amount of token1")
-    add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %")
+    add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
+    add_range_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
     add_range_parser.set_defaults(func=cmd_add_liquidity_range)
 
     # Remove liquidity command
@@ -577,6 +676,7 @@ def main():
     remove_parser.add_argument("percentage", type=float, help="Percentage to remove")
     remove_parser.add_argument("--collect-fees", action="store_true", help="Collect fees")
     remove_parser.add_argument("--burn", action="store_true", help="Burn position NFT")
+    remove_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
     remove_parser.set_defaults(func=cmd_remove_liquidity)
 
     # Migrate liquidity command
@@ -587,7 +687,8 @@ def main():
     migrate_parser.add_argument("--percentage", type=float, default=100, help="Percentage to migrate")
     migrate_parser.add_argument("--no-collect-fees", action="store_true", help="Skip fee collection")
     migrate_parser.add_argument("--burn-old", action="store_true", help="Burn old position")
-    migrate_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %")
+    migrate_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
+    migrate_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
     migrate_parser.set_defaults(func=cmd_migrate_liquidity)
 
     # Wallet command
@@ -616,6 +717,18 @@ def main():
     lp_quote_parser.add_argument("--amount0", type=float, help="Amount of token0 you have")
     lp_quote_parser.add_argument("--amount1", type=float, help="Amount of token1 you have")
     lp_quote_parser.set_defaults(func=cmd_lp_quote)
+
+    # Wrap ETH command
+    wrap_parser = subparsers.add_parser("wrap", help="Wrap ETH to WETH")
+    wrap_parser.add_argument("amount", type=float, help="Amount of ETH to wrap")
+    wrap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    wrap_parser.set_defaults(func=cmd_wrap)
+
+    # Unwrap WETH command
+    unwrap_parser = subparsers.add_parser("unwrap", help="Unwrap WETH to ETH")
+    unwrap_parser.add_argument("amount", type=float, help="Amount of WETH to unwrap")
+    unwrap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    unwrap_parser.set_defaults(func=cmd_unwrap)
 
     # Swap command
     swap_parser = subparsers.add_parser("swap", help="Swap tokens")

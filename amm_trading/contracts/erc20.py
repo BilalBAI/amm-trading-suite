@@ -1,21 +1,27 @@
 """ERC20 token contract wrapper"""
 
 from web3 import Web3
+from ..utils.gas import GasManager
+from ..utils.transactions import TransactionBuilder
 
 
 class ERC20:
     """Wrapper for ERC20 token interactions"""
 
-    def __init__(self, manager, address):
+    def __init__(self, manager, address, max_gas_price_gwei=None):
         """
         Args:
             manager: Web3Manager instance
             address: Token contract address
+            max_gas_price_gwei: Maximum gas price in gwei (None = no limit)
         """
         self.manager = manager
         self.address = manager.checksum(address)
         self.contract = manager.get_contract(address, "erc20")
         self._info = None
+
+        self.gas_manager = GasManager(manager, max_gas_price_gwei)
+        self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     @property
     def info(self):
@@ -100,19 +106,13 @@ class ERC20:
         if current_allowance >= amount_wei:
             return None  # Already approved
 
-        tx = self.contract.functions.approve(spender, amount_wei).build_transaction({
-            "from": self.manager.address,
-            "nonce": self.manager.get_nonce(),
-            "gas": 100000,
-            "gasPrice": self.manager.get_gas_price(),
-            "chainId": self.manager.chain_id,
-        })
-
-        signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        contract_func = self.contract.functions.approve(spender, amount_wei)
+        receipt = self.tx_builder.build_and_send(
+            contract_func,
+            operation_type="approve"
+        )
 
         if receipt.status != 1:
-            raise Exception(f"Approval failed: {tx_hash.hex()}")
+            raise Exception(f"Approval failed: {receipt.transactionHash.hex()}")
 
         return receipt

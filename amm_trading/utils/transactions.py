@@ -1,5 +1,85 @@
 """Transaction utilities"""
 
+from .gas import GasManager
+
+
+class TransactionBuilder:
+    """Build and send transactions with unified gas management"""
+
+    def __init__(self, manager, gas_manager=None, max_gas_price_gwei=None):
+        """
+        Args:
+            manager: Web3Manager instance
+            gas_manager: GasManager instance (created if None)
+            max_gas_price_gwei: Max gas price in gwei (used if gas_manager is None)
+        """
+        self.manager = manager
+        if gas_manager is not None:
+            self.gas_manager = gas_manager
+        else:
+            self.gas_manager = GasManager(manager, max_gas_price_gwei)
+
+    def build(self, contract_func, operation_type=None, gas_buffer=1.2, value=0):
+        """
+        Build a transaction for a contract function.
+
+        Args:
+            contract_func: Contract function to call
+            operation_type: Type of operation for gas estimation fallback
+            gas_buffer: Multiplier for gas estimate (default 1.2 = +20%)
+            value: ETH value to send in wei (default 0)
+
+        Returns:
+            Transaction dictionary ready for signing
+        """
+        # Validate gas price against max
+        gas_price = self.gas_manager.get_gas_price(ensure_timely=True)
+
+        # Estimate gas
+        gas = self.gas_manager.estimate_gas(
+            contract_func, self.manager.address, operation_type
+        )
+        gas = int(gas * gas_buffer)
+
+        tx = {
+            "from": self.manager.address,
+            "nonce": self.manager.get_nonce(),
+            "gas": gas,
+            "gasPrice": gas_price,
+            "chainId": self.manager.chain_id,
+        }
+
+        if value > 0:
+            tx["value"] = value
+
+        return contract_func.build_transaction(tx)
+
+    def build_and_send(self, contract_func, operation_type=None, gas_buffer=1.2,
+                       value=0, wait=True):
+        """
+        Build, sign, and send a transaction.
+
+        Args:
+            contract_func: Contract function to call
+            operation_type: Type of operation for gas estimation fallback
+            gas_buffer: Multiplier for gas estimate
+            value: ETH value to send in wei
+            wait: Whether to wait for receipt
+
+        Returns:
+            Transaction receipt if wait=True, else tx_hash
+        """
+        tx = self.build(contract_func, operation_type, gas_buffer, value)
+
+        signed = self.manager.account.sign_transaction(tx)
+        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
+
+        if not wait:
+            return tx_hash
+
+        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        return receipt
+
 
 def estimate_gas(manager, contract_func, from_address, fallback=500000):
     """

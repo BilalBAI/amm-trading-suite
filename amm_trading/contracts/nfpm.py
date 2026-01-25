@@ -4,20 +4,26 @@ import time
 from web3 import Web3
 from ..core.config import Config
 from ..core.exceptions import PositionError
+from ..utils.gas import GasManager
+from ..utils.transactions import TransactionBuilder
 
 
 class NFPM:
     """Wrapper for NonfungiblePositionManager interactions"""
 
-    def __init__(self, manager):
+    def __init__(self, manager, max_gas_price_gwei=None):
         """
         Args:
             manager: Web3Manager instance
+            max_gas_price_gwei: Maximum gas price in gwei (None = no limit)
         """
         self.manager = manager
         self.config = Config()
         self.address = manager.checksum(self.config.nfpm_address)
         self.contract = manager.get_contract(self.address, "uniswap_v3_nfpm")
+
+        self.gas_manager = GasManager(manager, max_gas_price_gwei)
+        self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     def get_position(self, token_id):
         """
@@ -82,27 +88,15 @@ class NFPM:
             params.get("deadline", int(time.time()) + 1800),
         )
 
-        try:
-            gas = self.contract.functions.mint(mint_params).estimate_gas(
-                {"from": self.manager.address}
-            )
-        except Exception:
-            gas = 1000000
-
-        tx = self.contract.functions.mint(mint_params).build_transaction({
-            "from": self.manager.address,
-            "nonce": self.manager.get_nonce(),
-            "gas": int(gas * gas_buffer),
-            "gasPrice": self.manager.get_gas_price(),
-            "chainId": self.manager.chain_id,
-        })
-
-        signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        contract_func = self.contract.functions.mint(mint_params)
+        receipt = self.tx_builder.build_and_send(
+            contract_func,
+            operation_type="mint",
+            gas_buffer=gas_buffer
+        )
 
         if receipt.status != 1:
-            raise Exception(f"Mint failed: {tx_hash.hex()}")
+            raise Exception(f"Mint failed: {receipt.transactionHash.hex()}")
 
         # Parse token ID from event
         events = self.contract.events.IncreaseLiquidity().process_receipt(receipt)
@@ -120,27 +114,14 @@ class NFPM:
             "deadline": deadline or int(time.time()) + 1800,
         }
 
-        try:
-            gas = self.contract.functions.decreaseLiquidity(params).estimate_gas(
-                {"from": self.manager.address}
-            )
-        except Exception:
-            gas = 500000
-
-        tx = self.contract.functions.decreaseLiquidity(params).build_transaction({
-            "from": self.manager.address,
-            "nonce": self.manager.get_nonce(),
-            "gas": int(gas * 1.2),
-            "gasPrice": self.manager.get_gas_price(),
-            "chainId": self.manager.chain_id,
-        })
-
-        signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        contract_func = self.contract.functions.decreaseLiquidity(params)
+        receipt = self.tx_builder.build_and_send(
+            contract_func,
+            operation_type="decrease"
+        )
 
         if receipt.status != 1:
-            raise Exception(f"Decrease liquidity failed: {tx_hash.hex()}")
+            raise Exception(f"Decrease liquidity failed: {receipt.transactionHash.hex()}")
 
         return receipt
 
@@ -153,32 +134,20 @@ class NFPM:
             "amount1Max": amount1_max or self.config.MAX_UINT128,
         }
 
-        tx = self.contract.functions.collect(params).build_transaction({
-            "from": self.manager.address,
-            "nonce": self.manager.get_nonce(),
-            "gas": 300000,
-            "gasPrice": self.manager.get_gas_price(),
-            "chainId": self.manager.chain_id,
-        })
-
-        signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        contract_func = self.contract.functions.collect(params)
+        receipt = self.tx_builder.build_and_send(
+            contract_func,
+            operation_type="collect"
+        )
 
         return receipt
 
     def burn(self, token_id):
         """Burn position NFT (must have 0 liquidity and collected all fees)"""
-        tx = self.contract.functions.burn(token_id).build_transaction({
-            "from": self.manager.address,
-            "nonce": self.manager.get_nonce(),
-            "gas": 200000,
-            "gasPrice": self.manager.get_gas_price(),
-            "chainId": self.manager.chain_id,
-        })
-
-        signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
+        contract_func = self.contract.functions.burn(token_id)
+        receipt = self.tx_builder.build_and_send(
+            contract_func,
+            operation_type="burn"
+        )
 
         return receipt

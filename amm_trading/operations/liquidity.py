@@ -14,14 +14,45 @@ from ..utils.math import round_tick_to_spacing, calculate_slippage_amounts, pric
 class LiquidityManager:
     """Manage Uniswap V3 liquidity positions"""
 
-    def __init__(self, manager=None):
+    # WETH address by chain - ETH symbol maps to this
+    WETH_ADDRESSES = {
+        1: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",      # Mainnet
+        5: "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",      # Goerli
+        11155111: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",  # Sepolia
+        42161: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",   # Arbitrum One
+        10: "0x4200000000000000000000000000000000000006",      # Optimism
+        137: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",     # Polygon (WMATIC)
+        8453: "0x4200000000000000000000000000000000000006",    # Base
+    }
+
+    def __init__(self, manager=None, max_gas_price_gwei=None):
         """
         Args:
             manager: Web3Manager instance (created with signer if None)
+            max_gas_price_gwei: Maximum gas price in gwei (None = no limit)
         """
         self.manager = manager or Web3Manager(require_signer=True)
         self.config = Config()
-        self.nfpm = NFPM(self.manager)
+        self.max_gas_price_gwei = max_gas_price_gwei
+        self.nfpm = NFPM(self.manager, max_gas_price_gwei=max_gas_price_gwei)
+
+    def _get_token_address(self, symbol_or_address):
+        """
+        Get token address, mapping ETH to WETH.
+
+        Args:
+            symbol_or_address: Token symbol (e.g., "ETH", "WETH", "USDT") or address
+
+        Returns:
+            Checksummed token address
+        """
+        if symbol_or_address.upper() == "ETH":
+            chain_id = self.manager.chain_id
+            if chain_id not in self.WETH_ADDRESSES:
+                raise ValueError(f"WETH address not configured for chain {chain_id}")
+            return self.manager.checksum(self.WETH_ADDRESSES[chain_id])
+
+        return self.manager.checksum(self.config.get_token_address(symbol_or_address))
 
     def _ensure_token_order(self, token0_addr, token1_addr, amount0, amount1):
         """Ensure token0 < token1 (Uniswap requirement)"""
@@ -76,11 +107,9 @@ class LiquidityManager:
             raise ValueError(
                 "Must specify exactly one of amount0_desired or amount1_desired")
 
-        # Resolve token addresses
-        token0_addr = self.manager.checksum(
-            self.config.get_token_address(token0))
-        token1_addr = self.manager.checksum(
-            self.config.get_token_address(token1))
+        # Resolve token addresses (ETH -> WETH mapping)
+        token0_addr = self._get_token_address(token0)
+        token1_addr = self._get_token_address(token1)
 
         # Ensure correct token order
         swapped = False
@@ -227,11 +256,9 @@ class LiquidityManager:
         Returns:
             Same as calculate_optimal_amounts()
         """
-        # Get pool and current price to calculate ticks
-        token0_addr = self.manager.checksum(
-            self.config.get_token_address(token0))
-        token1_addr = self.manager.checksum(
-            self.config.get_token_address(token1))
+        # Get pool and current price to calculate ticks (ETH -> WETH mapping)
+        token0_addr = self._get_token_address(token0)
+        token1_addr = self._get_token_address(token1)
 
         if int(token0_addr, 16) > int(token1_addr, 16):
             token0_addr, token1_addr = token1_addr, token0_addr
@@ -300,20 +327,18 @@ class LiquidityManager:
         Returns:
             Dict with receipt and token_id
         """
-        # Resolve token addresses
-        token0_addr = self.manager.checksum(
-            self.config.get_token_address(token0))
-        token1_addr = self.manager.checksum(
-            self.config.get_token_address(token1))
+        # Resolve token addresses (ETH -> WETH mapping)
+        token0_addr = self._get_token_address(token0)
+        token1_addr = self._get_token_address(token1)
 
         # Ensure correct token order
         token0_addr, token1_addr, amount0, amount1, swapped = self._ensure_token_order(
             token0_addr, token1_addr, amount0, amount1
         )
 
-        # Get token contracts
-        token0_contract = ERC20(self.manager, token0_addr)
-        token1_contract = ERC20(self.manager, token1_addr)
+        # Get token contracts with gas price limit
+        token0_contract = ERC20(self.manager, token0_addr, max_gas_price_gwei=self.max_gas_price_gwei)
+        token1_contract = ERC20(self.manager, token1_addr, max_gas_price_gwei=self.max_gas_price_gwei)
 
         # Adjust ticks to spacing
         spacing = self.config.get_tick_spacing(fee)
@@ -414,11 +439,9 @@ class LiquidityManager:
             raise ValueError(
                 f"Invalid percentage range: {percent_lower} >= {percent_upper}")
 
-        # Resolve token addresses
-        token0_addr = self.manager.checksum(
-            self.config.get_token_address(token0))
-        token1_addr = self.manager.checksum(
-            self.config.get_token_address(token1))
+        # Resolve token addresses (ETH -> WETH mapping)
+        token0_addr = self._get_token_address(token0)
+        token1_addr = self._get_token_address(token1)
 
         # Ensure correct token order for pool lookup
         if int(token0_addr, 16) > int(token1_addr, 16):
@@ -575,9 +598,9 @@ class LiquidityManager:
             raise PositionError(
                 f"Position {token_id} not owned by {self.manager.address}")
 
-        # Get tokens
-        token0 = ERC20(self.manager, pos["token0"])
-        token1 = ERC20(self.manager, pos["token1"])
+        # Get tokens with gas price limit
+        token0 = ERC20(self.manager, pos["token0"], max_gas_price_gwei=self.max_gas_price_gwei)
+        token1 = ERC20(self.manager, pos["token1"], max_gas_price_gwei=self.max_gas_price_gwei)
 
         # Adjust new ticks to spacing
         spacing = self.config.get_tick_spacing(pos["fee"])
