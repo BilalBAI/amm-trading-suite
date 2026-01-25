@@ -1,52 +1,62 @@
-"""Transaction utilities"""
+"""Transaction utilities with EIP-1559 support"""
 
 from .gas import GasManager
 
 
 class TransactionBuilder:
-    """Build and send transactions with unified gas management"""
+    """Build and send EIP-1559 transactions with unified gas management"""
 
-    def __init__(self, manager, gas_manager=None, max_gas_price_gwei=None):
+    def __init__(self, manager, gas_manager=None, maxFeePerGas=None, maxPriorityFeePerGas=None):
         """
         Args:
             manager: Web3Manager instance
             gas_manager: GasManager instance (created if None)
-            max_gas_price_gwei: Max gas price in gwei (used if gas_manager is None)
+            maxFeePerGas: Max fee per gas in Gwei (overrides config)
+            maxPriorityFeePerGas: Priority fee in Gwei (overrides config)
         """
         self.manager = manager
         if gas_manager is not None:
             self.gas_manager = gas_manager
         else:
-            self.gas_manager = GasManager(manager, max_gas_price_gwei)
+            self.gas_manager = GasManager(
+                manager,
+                maxFeePerGas=maxFeePerGas,
+                maxPriorityFeePerGas=maxPriorityFeePerGas
+            )
 
     def build(self, contract_func, operation_type=None, gas_buffer=1.2, value=0):
         """
-        Build a transaction for a contract function.
+        Build an EIP-1559 transaction for a contract function.
 
         Args:
             contract_func: Contract function to call
-            operation_type: Type of operation for gas estimation fallback
-            gas_buffer: Multiplier for gas estimate (default 1.2 = +20%)
+            operation_type: Type of operation for gas limit lookup
+            gas_buffer: Multiplier for gas limit (default 1.2 = +20%)
             value: ETH value to send in wei (default 0)
 
         Returns:
             Transaction dictionary ready for signing
-        """
-        # Validate gas price against max
-        gas_price = self.gas_manager.get_gas_price(ensure_timely=True)
 
-        # Estimate gas
-        gas = self.gas_manager.estimate_gas(
+        Raises:
+            GasPriceTooHighError: If base fee exceeds maxFeePerGas
+        """
+        # Get EIP-1559 gas parameters (validates against maxFeePerGas)
+        gas_params = self.gas_manager.getGasParams(operation_type, gas_buffer=1.0)
+
+        # Estimate actual gas needed
+        estimated_gas = self.gas_manager.estimateGas(
             contract_func, self.manager.address, operation_type
         )
-        gas = int(gas * gas_buffer)
+        gas_limit = int(estimated_gas * gas_buffer)
 
         tx = {
             "from": self.manager.address,
             "nonce": self.manager.get_nonce(),
-            "gas": gas,
-            "gasPrice": gas_price,
+            "gas": gas_limit,
+            "maxFeePerGas": gas_params["maxFeePerGas"],
+            "maxPriorityFeePerGas": gas_params["maxPriorityFeePerGas"],
             "chainId": self.manager.chain_id,
+            "type": 2,  # EIP-1559 transaction type
         }
 
         if value > 0:
@@ -57,17 +67,20 @@ class TransactionBuilder:
     def build_and_send(self, contract_func, operation_type=None, gas_buffer=1.2,
                        value=0, wait=True):
         """
-        Build, sign, and send a transaction.
+        Build, sign, and send an EIP-1559 transaction.
 
         Args:
             contract_func: Contract function to call
-            operation_type: Type of operation for gas estimation fallback
-            gas_buffer: Multiplier for gas estimate
+            operation_type: Type of operation for gas limit lookup
+            gas_buffer: Multiplier for gas limit
             value: ETH value to send in wei
             wait: Whether to wait for receipt
 
         Returns:
             Transaction receipt if wait=True, else tx_hash
+
+        Raises:
+            GasPriceTooHighError: If base fee exceeds maxFeePerGas
         """
         tx = self.build(contract_func, operation_type, gas_buffer, value)
 
@@ -81,12 +94,13 @@ class TransactionBuilder:
         return receipt
 
 
-def estimate_gas(manager, contract_func, from_address, fallback=500000):
+# Legacy functions for backward compatibility
+
+def estimate_gas(contract_func, from_address, fallback=500000):
     """
     Estimate gas for a contract function call.
 
     Args:
-        manager: Web3Manager instance
         contract_func: Contract function to estimate
         from_address: Address to estimate from
         fallback: Fallback gas if estimation fails
@@ -122,45 +136,51 @@ def send_transaction(manager, tx_data, wait=True):
     return receipt
 
 
-def build_tx(manager, contract_func, gas=None, gas_buffer=1.2):
+def build_tx_eip1559(manager, contract_func, gas_manager, operation_type=None, gas_buffer=1.2, value=0):
     """
-    Build a transaction for a contract function.
+    Build an EIP-1559 transaction for a contract function.
 
     Args:
         manager: Web3Manager instance
         contract_func: Contract function to call
-        gas: Gas limit (estimated if None)
+        gas_manager: GasManager instance
+        operation_type: Operation type for gas limit
         gas_buffer: Multiplier for gas estimate
+        value: ETH value to send in wei
 
     Returns:
         Transaction dictionary ready for signing
     """
-    if gas is None:
-        gas = estimate_gas(manager, contract_func, manager.address)
-        gas = int(gas * gas_buffer)
+    gas_params = gas_manager.getGasParams(operation_type, gas_buffer=1.0)
+    estimated_gas = gas_manager.estimateGas(contract_func, manager.address, operation_type)
+    gas_limit = int(estimated_gas * gas_buffer)
 
-    return contract_func.build_transaction({
+    tx = {
         "from": manager.address,
         "nonce": manager.get_nonce(),
-        "gas": gas,
-        "gasPrice": manager.get_gas_price(),
+        "gas": gas_limit,
+        "maxFeePerGas": gas_params["maxFeePerGas"],
+        "maxPriorityFeePerGas": gas_params["maxPriorityFeePerGas"],
         "chainId": manager.chain_id,
-    })
+        "type": 2,
+    }
+
+    if value > 0:
+        tx["value"] = value
+
+    return contract_func.build_transaction(tx)
 
 
-def format_gas_cost(manager, gas, gas_price=None):
+def format_gas_cost(gas, max_fee_per_gas):
     """
-    Format gas cost in ETH.
+    Format maximum gas cost in ETH.
 
     Args:
-        manager: Web3Manager instance
-        gas: Gas amount
-        gas_price: Gas price in wei (current price if None)
+        gas: Gas limit
+        max_fee_per_gas: Max fee per gas in wei
 
     Returns:
-        Cost in ETH as float
+        Maximum cost in ETH as float
     """
-    if gas_price is None:
-        gas_price = manager.get_gas_price()
-    cost_wei = gas * gas_price
-    return float(manager.w3.from_wei(cost_wei, "ether"))
+    cost_wei = gas * max_fee_per_gas
+    return cost_wei / 1e18

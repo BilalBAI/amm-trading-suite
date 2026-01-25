@@ -223,13 +223,16 @@ def cmd_calculate_amounts(args):
 
 def cmd_add_liquidity(args):
     """Add liquidity to pool"""
-    max_gas = getattr(args, 'max_gas_price', None)
-    manager = LiquidityManager(max_gas_price_gwei=max_gas)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
+    manager = LiquidityManager(maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
     print(f"Fee: {args.fee}, Ticks: {args.tick_lower} to {args.tick_upper}")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     result = manager.add_liquidity(
         token0=args.token0,
@@ -261,13 +264,16 @@ def cmd_add_liquidity(args):
 
 def cmd_add_liquidity_range(args):
     """Add liquidity using percentage range"""
-    max_gas = getattr(args, 'max_gas_price', None)
-    manager = LiquidityManager(max_gas_price_gwei=max_gas)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
+    manager = LiquidityManager(maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
     print(f"Fee: {args.fee}, Range: {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}%")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     result = manager.add_liquidity_range(
         token0=args.token0,
@@ -304,12 +310,15 @@ def cmd_add_liquidity_range(args):
 
 def cmd_remove_liquidity(args):
     """Remove liquidity from position"""
-    max_gas = getattr(args, 'max_gas_price', None)
-    manager = LiquidityManager(max_gas_price_gwei=max_gas)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
+    manager = LiquidityManager(maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Removing {args.percentage}% liquidity from position {args.token_id}")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     result = manager.remove_liquidity(
         token_id=args.token_id,
@@ -339,13 +348,16 @@ def cmd_remove_liquidity(args):
 
 def cmd_migrate_liquidity(args):
     """Migrate liquidity to new tick range"""
-    max_gas = getattr(args, 'max_gas_price', None)
-    manager = LiquidityManager(max_gas_price_gwei=max_gas)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
+    manager = LiquidityManager(maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Migrating {args.percentage}% of position {args.token_id}")
     print(f"New range: {args.tick_lower} to {args.tick_upper}")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     result = manager.migrate_liquidity(
         token_id=args.token_id,
@@ -443,13 +455,16 @@ def cmd_quote(args):
 
 def cmd_wrap(args):
     """Wrap ETH to WETH"""
-    max_gas = getattr(args, 'max_gas_price', None)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
     manager = Web3Manager(require_signer=True)
-    weth = WETH(manager, max_gas_price_gwei=max_gas)
+    weth = WETH(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Wrapping {args.amount} ETH to WETH")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     # Show balances before
     balances_before = weth.get_balances()
@@ -485,13 +500,16 @@ def cmd_wrap(args):
 
 def cmd_unwrap(args):
     """Unwrap WETH to ETH"""
-    max_gas = getattr(args, 'max_gas_price', None)
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    maxPriorityFeePerGas = getattr(args, 'priority_fee', None)
     manager = Web3Manager(require_signer=True)
-    weth = WETH(manager, max_gas_price_gwei=max_gas)
+    weth = WETH(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     print(f"Unwrapping {args.amount} WETH to ETH")
-    if max_gas:
-        print(f"Max gas price: {max_gas} gwei")
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
+    if maxPriorityFeePerGas:
+        print(f"maxPriorityFeePerGas: {maxPriorityFeePerGas} Gwei")
 
     # Show balances before
     balances_before = weth.get_balances()
@@ -536,8 +554,9 @@ def cmd_swap(args):
     else:
         print(f"Swapping {args.amount} {args.token_in} -> {args.token_out}")
     print(f"Pool: {args.pool}, Slippage: {args.slippage} bps")
-    if args.max_gas_price:
-        print(f"Max gas price: {args.max_gas_price} gwei")
+    maxFeePerGas = getattr(args, 'max_fee', None)
+    if maxFeePerGas:
+        print(f"maxFeePerGas: {maxFeePerGas} Gwei")
 
     result = manager.swap(
         token_in=args.token_in,
@@ -545,7 +564,7 @@ def cmd_swap(args):
         pool_name=args.pool,
         amount_in=args.amount,
         slippage_bps=args.slippage,
-        max_gas_price_gwei=args.max_gas_price,
+        max_gas_price_gwei=maxFeePerGas,  # swap.py uses legacy naming for now
         deadline_minutes=args.deadline,
         dry_run=dry_run,
     )
@@ -654,7 +673,8 @@ def main():
     add_parser.add_argument("amount0", type=float, help="Amount of token0")
     add_parser.add_argument("amount1", type=float, help="Amount of token1")
     add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
-    add_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    add_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    add_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     add_parser.set_defaults(func=cmd_add_liquidity)
 
     # Add liquidity with percentage range command
@@ -667,7 +687,8 @@ def main():
     add_range_parser.add_argument("amount0", type=float, help="Amount of token0")
     add_range_parser.add_argument("amount1", type=float, help="Amount of token1")
     add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
-    add_range_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    add_range_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    add_range_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     add_range_parser.set_defaults(func=cmd_add_liquidity_range)
 
     # Remove liquidity command
@@ -676,7 +697,8 @@ def main():
     remove_parser.add_argument("percentage", type=float, help="Percentage to remove")
     remove_parser.add_argument("--collect-fees", action="store_true", help="Collect fees")
     remove_parser.add_argument("--burn", action="store_true", help="Burn position NFT")
-    remove_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    remove_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    remove_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     remove_parser.set_defaults(func=cmd_remove_liquidity)
 
     # Migrate liquidity command
@@ -688,7 +710,8 @@ def main():
     migrate_parser.add_argument("--no-collect-fees", action="store_true", help="Skip fee collection")
     migrate_parser.add_argument("--burn-old", action="store_true", help="Burn old position")
     migrate_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
-    migrate_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    migrate_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    migrate_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     migrate_parser.set_defaults(func=cmd_migrate_liquidity)
 
     # Wallet command
@@ -721,13 +744,15 @@ def main():
     # Wrap ETH command
     wrap_parser = subparsers.add_parser("wrap", help="Wrap ETH to WETH")
     wrap_parser.add_argument("amount", type=float, help="Amount of ETH to wrap")
-    wrap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    wrap_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    wrap_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     wrap_parser.set_defaults(func=cmd_wrap)
 
     # Unwrap WETH command
     unwrap_parser = subparsers.add_parser("unwrap", help="Unwrap WETH to ETH")
     unwrap_parser.add_argument("amount", type=float, help="Amount of WETH to unwrap")
-    unwrap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    unwrap_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    unwrap_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     unwrap_parser.set_defaults(func=cmd_unwrap)
 
     # Swap command
@@ -737,7 +762,8 @@ def main():
     swap_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
     swap_parser.add_argument("amount", type=float, help="Amount of token_in to swap")
     swap_parser.add_argument("--slippage", type=int, default=50, help="Slippage in basis points (default: 50 = 0.5%%)")
-    swap_parser.add_argument("--max-gas-price", type=float, help="Maximum gas price in gwei")
+    swap_parser.add_argument("--max-fee", type=float, help="maxFeePerGas in Gwei (max total fee per gas)")
+    swap_parser.add_argument("--priority-fee", type=float, help="maxPriorityFeePerGas in Gwei (tip to validators)")
     swap_parser.add_argument("--deadline", type=int, default=30, help="Transaction deadline in minutes (default: 30)")
     swap_parser.add_argument("--dry-run", action="store_true", help="Simulate swap without executing")
     swap_parser.set_defaults(func=cmd_swap)

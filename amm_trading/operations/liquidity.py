@@ -25,16 +25,18 @@ class LiquidityManager:
         8453: "0x4200000000000000000000000000000000000006",    # Base
     }
 
-    def __init__(self, manager=None, max_gas_price_gwei=None):
+    def __init__(self, manager=None, maxFeePerGas=None, maxPriorityFeePerGas=None):
         """
         Args:
             manager: Web3Manager instance (created with signer if None)
-            max_gas_price_gwei: Maximum gas price in gwei (None = no limit)
+            maxFeePerGas: Maximum fee per gas in Gwei (None = use config/no limit)
+            maxPriorityFeePerGas: Priority fee in Gwei (None = use config)
         """
         self.manager = manager or Web3Manager(require_signer=True)
         self.config = Config()
-        self.max_gas_price_gwei = max_gas_price_gwei
-        self.nfpm = NFPM(self.manager, max_gas_price_gwei=max_gas_price_gwei)
+        self.maxFeePerGas = maxFeePerGas
+        self.maxPriorityFeePerGas = maxPriorityFeePerGas
+        self.nfpm = NFPM(self.manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
 
     def _get_token_address(self, symbol_or_address):
         """
@@ -337,8 +339,8 @@ class LiquidityManager:
         )
 
         # Get token contracts with gas price limit
-        token0_contract = ERC20(self.manager, token0_addr, max_gas_price_gwei=self.max_gas_price_gwei)
-        token1_contract = ERC20(self.manager, token1_addr, max_gas_price_gwei=self.max_gas_price_gwei)
+        token0_contract = ERC20(self.manager, token0_addr, maxFeePerGas=self.maxFeePerGas, maxPriorityFeePerGas=self.maxPriorityFeePerGas)
+        token1_contract = ERC20(self.manager, token1_addr, maxFeePerGas=self.maxFeePerGas, maxPriorityFeePerGas=self.maxPriorityFeePerGas)
 
         # Adjust ticks to spacing
         spacing = self.config.get_tick_spacing(fee)
@@ -599,8 +601,8 @@ class LiquidityManager:
                 f"Position {token_id} not owned by {self.manager.address}")
 
         # Get tokens with gas price limit
-        token0 = ERC20(self.manager, pos["token0"], max_gas_price_gwei=self.max_gas_price_gwei)
-        token1 = ERC20(self.manager, pos["token1"], max_gas_price_gwei=self.max_gas_price_gwei)
+        token0 = ERC20(self.manager, pos["token0"], maxFeePerGas=self.maxFeePerGas, maxPriorityFeePerGas=self.maxPriorityFeePerGas)
+        token1 = ERC20(self.manager, pos["token1"], maxFeePerGas=self.maxFeePerGas, maxPriorityFeePerGas=self.maxPriorityFeePerGas)
 
         # Adjust new ticks to spacing
         spacing = self.config.get_tick_spacing(pos["fee"])

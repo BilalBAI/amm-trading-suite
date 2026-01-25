@@ -11,18 +11,19 @@ from ..utils.transactions import TransactionBuilder
 class NFPM:
     """Wrapper for NonfungiblePositionManager interactions"""
 
-    def __init__(self, manager, max_gas_price_gwei=None):
+    def __init__(self, manager, maxFeePerGas=None, maxPriorityFeePerGas=None):
         """
         Args:
             manager: Web3Manager instance
-            max_gas_price_gwei: Maximum gas price in gwei (None = no limit)
+            maxFeePerGas: Maximum fee per gas in Gwei (None = use config/no limit)
+            maxPriorityFeePerGas: Priority fee in Gwei (None = use config)
         """
         self.manager = manager
         self.config = Config()
         self.address = manager.checksum(self.config.nfpm_address)
         self.contract = manager.get_contract(self.address, "uniswap_v3_nfpm")
 
-        self.gas_manager = GasManager(manager, max_gas_price_gwei)
+        self.gas_manager = GasManager(manager, maxFeePerGas=maxFeePerGas, maxPriorityFeePerGas=maxPriorityFeePerGas)
         self.tx_builder = TransactionBuilder(manager, self.gas_manager)
 
     def get_position(self, token_id):
@@ -117,7 +118,7 @@ class NFPM:
         contract_func = self.contract.functions.decreaseLiquidity(params)
         receipt = self.tx_builder.build_and_send(
             contract_func,
-            operation_type="decrease"
+            operation_type="decreaseLiquidity"
         )
 
         if receipt.status != 1:
