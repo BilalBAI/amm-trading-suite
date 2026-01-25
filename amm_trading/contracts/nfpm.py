@@ -98,7 +98,7 @@ class NFPM:
         })
 
         signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.rawTransaction)
+        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
 
         if receipt.status != 1:
@@ -136,7 +136,7 @@ class NFPM:
         })
 
         signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.rawTransaction)
+        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
 
         if receipt.status != 1:
@@ -162,7 +162,7 @@ class NFPM:
         })
 
         signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.rawTransaction)
+        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
 
         return receipt
@@ -178,7 +178,7 @@ class NFPM:
         })
 
         signed = self.manager.account.sign_transaction(tx)
-        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.rawTransaction)
+        tx_hash = self.manager.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.manager.w3.eth.wait_for_transaction_receipt(tx_hash)
 
         return receipt

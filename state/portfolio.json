@@ -1,0 +1,18 @@
+{
+  "last_updated": "2026-01-24T10:00:00Z",
+  "wallet_address": "0x5EDb4d89D89E5d04B82930ed1562392AAe759615",
+  "positions": [],
+  "balances": {
+    "ETH": 0.005,
+    "WETH": 0.0,
+    "USDC": 0.0,
+    "USDT": 0.0,
+    "DAI": 0.0,
+    "WBTC": 0.0,
+    "UNI": 0.0,
+    "LINK": 0.0,
+    "COMP": 0.0
+  },
+  "total_value_usd": 16.50,
+  "total_fees_earned_usd": 0
+}

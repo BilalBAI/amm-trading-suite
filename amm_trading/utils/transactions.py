@@ -33,7 +33,7 @@ def send_transaction(manager, tx_data, wait=True):
         Transaction receipt if wait=True, else tx_hash
     """
     signed = manager.account.sign_transaction(tx_data)
-    tx_hash = manager.w3.eth.send_raw_transaction(signed.rawTransaction)
+    tx_hash = manager.w3.eth.send_raw_transaction(signed.raw_transaction)
 
     if not wait:
         return tx_hash
