@@ -173,7 +173,7 @@ from amm_trading.protocols.uniswap_v3 import (
     LiquidityManager, PositionQuery, PoolQuery, SwapManager,
 )
 from amm_trading.contracts import ERC20, WETH
-from amm_trading.operations import BalanceQuery, generate_wallet
+from amm_trading.core import BalanceQuery, generate_wallet
 
 # Query operations (read-only, no wallet needed)
 query = PositionQuery()
@@ -316,7 +316,9 @@ amm_trading/
 ├── core/                           # Shared infrastructure
 │   ├── config.py                   # Configuration management
 │   ├── connection.py               # Web3 connection handling
-│   └── exceptions.py               # Custom exceptions
+│   ├── exceptions.py               # Custom exceptions
+│   ├── balances.py                 # Query token balances
+│   └── wallet.py                   # Wallet generation
 ├── contracts/                      # Shared contract wrappers
 │   ├── erc20.py                    # ERC20 token wrapper
 │   └── weth.py                     # WETH wrap/unwrap operations
@@ -332,9 +334,6 @@ amm_trading/
 │       │   ├── positions.py        # Query position details
 │       │   └── swap.py             # Token swap operations
 │       └── math.py                 # Tick/price calculations
-├── operations/                     # Backwards-compatible re-exports
-│   ├── balances.py                 # Query token balances
-│   └── wallet.py                   # Wallet generation
 ├── utils/                          # Shared utilities
 │   ├── gas.py                      # EIP-1559 gas management
 │   └── transactions.py             # Transaction helpers

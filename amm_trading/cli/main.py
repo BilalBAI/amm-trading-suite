@@ -6,14 +6,11 @@ import json
 import argparse
 from pathlib import Path
 
-from ..operations.pools import PoolQuery
-from ..operations.positions import PositionQuery
-from ..operations.liquidity import LiquidityManager
-from ..operations.wallet import generate_wallet
-from ..operations.swap import SwapManager
-from ..operations.balances import BalanceQuery
-from ..contracts.weth import WETH
+from ..protocols.uniswap_v3 import PoolQuery, PositionQuery, LiquidityManager, SwapManager
+from ..core.wallet import generate_wallet
+from ..core.balances import BalanceQuery
 from ..core.connection import Web3Manager
+from ..contracts.weth import WETH
 
 
 def get_results_dir():
