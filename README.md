@@ -1,6 +1,6 @@
 # AMM Trading Toolkit
 
-A Python package for interacting with Uniswap V3 on Ethereum. Query positions, analyze pools, and manage liquidity programmatically.
+A Python package for interacting with AMM protocols on Ethereum. Currently supports Uniswap V3, with a multi-protocol architecture designed for future expansion (Uniswap V4, Curve, etc.).
 
 ## Installation
 
@@ -176,8 +176,11 @@ All results are automatically saved to the `results/` folder.
 
 ```python
 from amm_trading import Web3Manager, Config
-from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet, SwapManager, BalanceQuery
-from amm_trading.contracts import ERC20, NFPM, Pool
+from amm_trading.protocols.uniswap_v3 import (
+    LiquidityManager, PositionQuery, PoolQuery, SwapManager,
+)
+from amm_trading.contracts import ERC20, WETH
+from amm_trading.operations import BalanceQuery, generate_wallet
 
 # Query operations (read-only, no wallet needed)
 query = PositionQuery()
@@ -196,8 +199,7 @@ for bal in balances["balances"]:
     if bal["balance"] > 0:
         print(f"{bal['symbol']}: {bal['balance']}")
 
-# Calculate optimal amounts BEFORE adding liquidity (NEW!)
-from amm_trading import Web3Manager
+# Calculate optimal amounts BEFORE adding liquidity
 web3_manager = Web3Manager(require_signer=False)
 calc_manager = LiquidityManager(manager=web3_manager)
 
@@ -227,7 +229,7 @@ result = manager.add_liquidity(
 )
 print(f"New position ID: {result['token_id']}")
 
-# Add liquidity using percentage range (NEW!)
+# Add liquidity using percentage range
 # Automatically converts percentages to ticks based on current pool price
 result = manager.add_liquidity_range(
     token0="WETH",
@@ -280,9 +282,8 @@ print(f"Tx: {result['tx_hash']}")
 print(f"Swapped {result['token_in']['amount']} {result['token_in']['symbol']}")
 
 # Wrap/Unwrap ETH (requires wallet.env)
-from amm_trading.contracts import WETH
-manager = Web3Manager(require_signer=True)
-weth = WETH(manager)
+w3 = Web3Manager(require_signer=True)
+weth = WETH(w3)
 weth.deposit(0.1)   # Wrap 0.1 ETH to WETH
 weth.withdraw(0.1)  # Unwrap 0.1 WETH to ETH
 ```
@@ -291,7 +292,8 @@ weth.withdraw(0.1)  # Unwrap 0.1 WETH to ETH
 
 ```python
 from amm_trading import Web3Manager
-from amm_trading.contracts import ERC20, NFPM, Pool
+from amm_trading.contracts import ERC20
+from amm_trading.protocols.uniswap_v3 import NFPM, Pool
 
 # Read-only operations
 manager = Web3Manager(require_signer=False)
@@ -300,7 +302,7 @@ manager = Web3Manager(require_signer=False)
 weth = ERC20(manager, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 print(f"{weth.symbol}: {weth.decimals} decimals")
 
-# Get pool info
+# Get pool info (Uniswap V3)
 pool = Pool(manager, "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36")
 print(f"Current tick: {pool.current_tick}")
 print(f"Price: {pool.get_price(18, 6):.2f}")
@@ -390,9 +392,9 @@ All CLI commands save results to the `results/` folder:
 
 ## Documentation
 
-- **[TICKS_AND_PRICES.md](TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
-- **[PERCENTAGE_RANGES.md](PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
-- **[TOKEN_AMOUNTS_GUIDE.md](TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts (NEW!)
+- **[TICKS_AND_PRICES.md](docs/TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
+- **[PERCENTAGE_RANGES.md](docs/PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
+- **[TOKEN_AMOUNTS_GUIDE.md](docs/TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts
 
 ## Archived Scripts
 
