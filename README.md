@@ -318,28 +318,33 @@ print(f"Liquidity: {pos['liquidity']}")
 
 ```
 amm_trading/
-├── core/
-│   ├── config.py        # Configuration management
-│   ├── connection.py    # Web3 connection handling
-│   └── exceptions.py    # Custom exceptions
-├── contracts/
-│   ├── erc20.py         # ERC20 token wrapper
-│   ├── nfpm.py          # NonfungiblePositionManager wrapper
-│   ├── pool.py          # Uniswap V3 Pool wrapper
-│   └── weth.py          # WETH wrap/unwrap operations
-├── operations/
-│   ├── balances.py      # Query token balances
-│   ├── liquidity.py     # Add/remove/migrate liquidity
-│   ├── pools.py         # Query pool information
-│   ├── positions.py     # Query position details
-│   ├── swap.py          # Token swap operations
-│   └── wallet.py        # Wallet generation
-├── utils/
-│   ├── gas.py           # EIP-1559 gas management
-│   ├── math.py          # Tick/price calculations
-│   └── transactions.py  # Transaction helpers
+├── core/                           # Shared infrastructure
+│   ├── config.py                   # Configuration management
+│   ├── connection.py               # Web3 connection handling
+│   └── exceptions.py               # Custom exceptions
+├── contracts/                      # Shared contract wrappers
+│   ├── erc20.py                    # ERC20 token wrapper
+│   └── weth.py                     # WETH wrap/unwrap operations
+├── protocols/                      # Protocol implementations
+│   ├── base.py                     # Abstract base classes
+│   └── uniswap_v3/                 # Uniswap V3 protocol
+│       ├── contracts/
+│       │   ├── nfpm.py             # NonfungiblePositionManager
+│       │   └── pool.py             # Pool contract wrapper
+│       ├── operations/
+│       │   ├── liquidity.py        # Add/remove/migrate liquidity
+│       │   ├── pools.py            # Query pool information
+│       │   ├── positions.py        # Query position details
+│       │   └── swap.py             # Token swap operations
+│       └── math.py                 # Tick/price calculations
+├── operations/                     # Backwards-compatible re-exports
+│   ├── balances.py                 # Query token balances
+│   └── wallet.py                   # Wallet generation
+├── utils/                          # Shared utilities
+│   ├── gas.py                      # EIP-1559 gas management
+│   └── transactions.py             # Transaction helpers
 └── cli/
-    └── main.py          # Command-line interface
+    └── main.py                     # Command-line interface
 ```
 
 ## Fee Tiers
