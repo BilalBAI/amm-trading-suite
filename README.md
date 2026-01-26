@@ -94,78 +94,71 @@ Where:
 
 ### Command Line
 
+#### General
+
 ```bash
-# Query all configured pools (uses cache for static data)
-amm-trading query pools
-
-# Force refresh static pool data cache
-amm-trading query pools --refresh-cache
-
-# Query specific pool
-amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
-
-# Query a position
-amm-trading query univ3-position 1157630
-
-# Query all positions for an address
-amm-trading query univ3-positions --address 0x123...
-
-# Query ETH and token balances for an address
+# Query ETH and token balances (defaults to wallet.env address)
+amm-trading query balances
 amm-trading query balances --address 0x123...
-
-# Calculate optimal token amounts (NEW!)
-# Before adding liquidity, calculate exact amounts needed
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
-
-# Add liquidity (using ticks)
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300
-
-# Add with custom slippage (1%)
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
-
-# Add liquidity using percentage range (NEW!)
-# Symmetric range: -5% to +5% around current price
-amm-trading add-range WETH USDT 3000 -0.05 0.05 0.1 300
-
-# Asymmetric range: -10% to -1% (below current price)
-amm-trading add-range WETH USDT 3000 -0.10 -0.01 0.1 300
-
-# Above current price: +1% to +10%
-amm-trading add-range WETH USDT 3000 0.01 0.10 0.1 300
-
-# Remove 50% liquidity and collect fees
-amm-trading remove 1157630 50 --collect-fees
-
-# Remove 100% and burn position
-amm-trading remove 1157630 100 --collect-fees --burn
-
-# Migrate liquidity to new range
-amm-trading migrate 1157630 -887220 887220
-
-# Migrate 50% to new range
-amm-trading migrate 1157630 -887220 887220 --percentage 50
-
-# Generate a new wallet
-amm-trading wallet generate
-
-# Generate with 5 accounts
-amm-trading wallet generate --accounts 5
-
-# Swap tokens
-amm-trading swap WETH USDT WETH_USDT_30 0.1
-
-# Swap with custom slippage (1% = 100 basis points)
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
-
-# Swap with custom deadline (60 minutes)
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 
 # Wrap ETH to WETH
 amm-trading wrap 0.1
 
 # Unwrap WETH to ETH
 amm-trading unwrap 0.1
+
+# Generate a new wallet
+amm-trading wallet generate
+amm-trading wallet generate --accounts 5
+```
+
+#### Uniswap V3 - Queries
+
+```bash
+# Query all configured pools (uses cache for static data)
+amm-trading query pools
+amm-trading query pools --refresh-cache
+amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
+
+# Query a position by NFT token ID
+amm-trading query univ3-position 1157630
+
+# Query all positions (defaults to wallet.env address)
+amm-trading query univ3-positions
+amm-trading query univ3-positions --address 0x123...
+
+# Calculate optimal token amounts before adding liquidity
+amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
+amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
+```
+
+#### Uniswap V3 - Liquidity
+
+```bash
+# Add liquidity (using ticks)
+amm-trading add WETH USDT 3000 -887220 887220 0.1 300
+amm-trading add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
+
+# Add liquidity using percentage range around current price
+amm-trading add-range WETH USDT 3000 -0.05 0.05 0.1 300    # -5% to +5%
+amm-trading add-range WETH USDT 3000 -0.10 -0.01 0.1 300   # -10% to -1% (below)
+amm-trading add-range WETH USDT 3000 0.01 0.10 0.1 300      # +1% to +10% (above)
+
+# Remove liquidity
+amm-trading remove 1157630 50 --collect-fees
+amm-trading remove 1157630 100 --collect-fees --burn
+
+# Migrate liquidity to new range
+amm-trading migrate 1157630 -887220 887220
+amm-trading migrate 1157630 -887220 887220 --percentage 50
+```
+
+#### Uniswap V3 - Swaps
+
+```bash
+amm-trading swap WETH USDT WETH_USDT_30 0.1
+amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
+amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 ```
 
 > **Note:** Gas parameters (maxFeePerGas, maxPriorityFeePerGas, gasLimit) are controlled via `gas_config.json`. See [Gas Management](#gas-management).
