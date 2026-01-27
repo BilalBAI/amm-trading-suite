@@ -116,49 +116,49 @@ amm-trading wallet generate --accounts 5
 
 ```bash
 # Query all configured pools (uses cache for static data)
-amm-trading query pools
-amm-trading query pools --refresh-cache
-amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
+amm-trading univ3 query pools
+amm-trading univ3 query pools --refresh-cache
+amm-trading univ3 query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
 
 # Query a position by NFT token ID
-amm-trading query univ3-position 1157630
+amm-trading univ3 query position 1157630
 
 # Query all positions (defaults to wallet.env address)
-amm-trading query univ3-positions
-amm-trading query univ3-positions --address 0x123...
+amm-trading univ3 query positions
+amm-trading univ3 query positions --address 0x123...
 
 # Calculate optimal token amounts before adding liquidity
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
+amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
+amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
 ```
 
 #### Uniswap V3 - Liquidity
 
 ```bash
 # Add liquidity (using ticks)
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
+amm-trading univ3 add WETH USDT 3000 -887220 887220 0.1 300
+amm-trading univ3 add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
 
 # Add liquidity using percentage range around current price
-amm-trading add-range WETH USDT 3000 -0.05 0.05 0.1 300    # -5% to +5%
-amm-trading add-range WETH USDT 3000 -0.10 -0.01 0.1 300   # -10% to -1% (below)
-amm-trading add-range WETH USDT 3000 0.01 0.10 0.1 300      # +1% to +10% (above)
+amm-trading univ3 add-range WETH USDT 3000 -0.05 0.05 0.1 300    # -5% to +5%
+amm-trading univ3 add-range WETH USDT 3000 -0.10 -0.01 0.1 300   # -10% to -1% (below)
+amm-trading univ3 add-range WETH USDT 3000 0.01 0.10 0.1 300      # +1% to +10% (above)
 
 # Remove liquidity
-amm-trading remove 1157630 50 --collect-fees
-amm-trading remove 1157630 100 --collect-fees --burn
+amm-trading univ3 remove 1157630 50 --collect-fees
+amm-trading univ3 remove 1157630 100 --collect-fees --burn
 
 # Migrate liquidity to new range
-amm-trading migrate 1157630 -887220 887220
-amm-trading migrate 1157630 -887220 887220 --percentage 50
+amm-trading univ3 migrate 1157630 -887220 887220
+amm-trading univ3 migrate 1157630 -887220 887220 --percentage 50
 ```
 
 #### Uniswap V3 - Swaps
 
 ```bash
-amm-trading swap WETH USDT WETH_USDT_30 0.1
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --slippage 100
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 ```
 
 > **Note:** Gas parameters (maxFeePerGas, maxPriorityFeePerGas, gasLimit) are controlled via `gas_config.json`. See [Gas Management](#gas-management).
@@ -372,15 +372,15 @@ All CLI commands save results to the `results/` folder:
 
 | Command | Output File |
 |---------|-------------|
-| `query pools` | `results/univ3_pools.json` |
-| `query univ3-position <id>` | `results/univ3_position_<id>.json` |
-| `query univ3-positions` | `results/positions_<address>.json` |
 | `query balances` | `results/balances_<address>.json` |
-| `add ...` | `results/add_liquidity_<id>.json` |
-| `remove ...` | `results/remove_liquidity_<id>.json` |
-| `migrate ...` | `results/migrate_<old>_to_<new>.json` |
 | `wallet generate` | `results/wallet.json` |
-| `swap ...` | `results/swap_<tx_hash>.json` |
+| `univ3 query pools` | `results/univ3_pools.json` |
+| `univ3 query position <id>` | `results/univ3_position_<id>.json` |
+| `univ3 query positions` | `results/positions_<address>.json` |
+| `univ3 add ...` | `results/add_liquidity_<id>.json` |
+| `univ3 remove ...` | `results/remove_liquidity_<id>.json` |
+| `univ3 migrate ...` | `results/migrate_<old>_to_<new>.json` |
+| `univ3 swap ...` | `results/swap_<tx_hash>.json` |
 
 ## Documentation
 
