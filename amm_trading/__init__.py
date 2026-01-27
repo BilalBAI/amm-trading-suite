@@ -1,5 +1,5 @@
 """
-AMM Trading - A toolkit for Uniswap V3 liquidity management
+AMM Trading - A multi-protocol toolkit for AMM liquidity management
 """
 
 from .core.connection import Web3Manager

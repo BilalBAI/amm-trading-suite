@@ -1,6 +1,6 @@
 """Uniswap V3 Pool contract wrapper"""
 
-from ..core.config import Config
+from ....core.config import Config
 
 
 class Pool:

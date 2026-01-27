@@ -6,14 +6,11 @@ import json
 import argparse
 from pathlib import Path
 
-from ..operations.pools import PoolQuery
-from ..operations.positions import PositionQuery
-from ..operations.liquidity import LiquidityManager
-from ..operations.wallet import generate_wallet
-from ..operations.swap import SwapManager
-from ..operations.balances import BalanceQuery
-from ..contracts.weth import WETH
+from ..protocols.uniswap_v3 import PoolQuery, PositionQuery, LiquidityManager, SwapManager
+from ..core.wallet import generate_wallet
+from ..core.balances import BalanceQuery
 from ..core.connection import Web3Manager
+from ..contracts.weth import WETH
 
 
 def get_results_dir():
@@ -567,41 +564,66 @@ def cmd_swap(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="amm-trading",
-        description="Uniswap V3 liquidity management toolkit",
+        description="AMM trading toolkit (multi-protocol)",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command")
 
-    # Query commands
-    query_parser = subparsers.add_parser("query", help="Query operations")
+    # ── Top-level: query (shared/general) ──────────────────────────────
+    query_parser = subparsers.add_parser("query", help="General query operations")
     query_sub = query_parser.add_subparsers(dest="query_type")
-
-    # query pools
-    pools_parser = query_sub.add_parser("pools", help="Query pool info")
-    pools_parser.add_argument("--address", help="Specific pool address")
-    pools_parser.add_argument("--refresh-cache", action="store_true", help="Force refresh static pool data cache")
-    pools_parser.set_defaults(func=cmd_query_pools)
-
-    # query univ3 position
-    pos_parser = query_sub.add_parser("univ3-position", help="Query Uniswap V3 position by NFT token ID")
-    pos_parser.add_argument("token_id", type=int, help="Position NFT token ID")
-    pos_parser.set_defaults(func=cmd_query_position)
-
-    # query univ3 positions (for address)
-    positions_parser = query_sub.add_parser("univ3-positions", help="Query all Uniswap V3 positions for address")
-    positions_parser.add_argument("--address", help="Address to query (default: wallet.env)")
-    positions_parser.set_defaults(func=cmd_query_positions)
 
     # query balances
     balances_parser = query_sub.add_parser("balances", help="Query ETH and token balances")
     balances_parser.add_argument("--address", help="Address to query")
     balances_parser.set_defaults(func=cmd_query_balances)
 
-    # Calculate optimal amounts command
-    calc_parser = subparsers.add_parser("calculate", help="Calculate optimal token amounts")
-    calc_sub = calc_parser.add_subparsers(dest="calc_type")
-    
-    # calculate amounts (tick-based)
-    calc_ticks_parser = calc_sub.add_parser("amounts", help="Calculate amounts for tick range")
+    # ── Top-level: wrap / unwrap ───────────────────────────────────────
+    wrap_parser = subparsers.add_parser("wrap", help="Wrap ETH to WETH")
+    wrap_parser.add_argument("amount", type=float, help="Amount of ETH to wrap")
+    wrap_parser.set_defaults(func=cmd_wrap)
+
+    unwrap_parser = subparsers.add_parser("unwrap", help="Unwrap WETH to ETH")
+    unwrap_parser.add_argument("amount", type=float, help="Amount of WETH to unwrap")
+    unwrap_parser.set_defaults(func=cmd_unwrap)
+
+    # ── Top-level: wallet ──────────────────────────────────────────────
+    wallet_parser = subparsers.add_parser("wallet", help="Wallet operations")
+    wallet_sub = wallet_parser.add_subparsers(dest="wallet_type")
+
+    wallet_gen_parser = wallet_sub.add_parser("generate", help="Generate new wallet")
+    wallet_gen_parser.add_argument("--accounts", type=int, default=3, help="Number of accounts to derive")
+    wallet_gen_parser.set_defaults(func=cmd_wallet_generate)
+
+    # ── Top-level: univ3 (Uniswap V3 operations) ──────────────────────
+    univ3_parser = subparsers.add_parser("univ3", help="Uniswap V3 operations")
+    univ3_sub = univ3_parser.add_subparsers(dest="univ3_command")
+
+    # ── univ3 query ────────────────────────────────────────────────────
+    univ3_query_parser = univ3_sub.add_parser("query", help="Query Uniswap V3 data")
+    univ3_query_sub = univ3_query_parser.add_subparsers(dest="univ3_query_type")
+
+    # univ3 query pools
+    pools_parser = univ3_query_sub.add_parser("pools", help="Query pool info")
+    pools_parser.add_argument("--address", help="Specific pool address")
+    pools_parser.add_argument("--refresh-cache", action="store_true", help="Force refresh static pool data cache")
+    pools_parser.set_defaults(func=cmd_query_pools)
+
+    # univ3 query position
+    pos_parser = univ3_query_sub.add_parser("position", help="Query position by NFT token ID")
+    pos_parser.add_argument("token_id", type=int, help="Position NFT token ID")
+    pos_parser.set_defaults(func=cmd_query_position)
+
+    # univ3 query positions
+    positions_parser = univ3_query_sub.add_parser("positions", help="Query all positions for address")
+    positions_parser.add_argument("--address", help="Address to query (default: wallet.env)")
+    positions_parser.set_defaults(func=cmd_query_positions)
+
+    # ── univ3 calculate ────────────────────────────────────────────────
+    univ3_calc_parser = univ3_sub.add_parser("calculate", help="Calculate optimal token amounts")
+    univ3_calc_sub = univ3_calc_parser.add_subparsers(dest="calc_type")
+
+    # univ3 calculate amounts (tick-based)
+    calc_ticks_parser = univ3_calc_sub.add_parser("amounts", help="Calculate amounts for tick range")
     calc_ticks_parser.add_argument("token0", help="Token0 symbol or address")
     calc_ticks_parser.add_argument("token1", help="Token1 symbol or address")
     calc_ticks_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
@@ -610,9 +632,9 @@ def main():
     calc_ticks_parser.add_argument("--amount0", type=float, help="Desired amount of token0 (specify this OR amount1)")
     calc_ticks_parser.add_argument("--amount1", type=float, help="Desired amount of token1 (specify this OR amount0)")
     calc_ticks_parser.set_defaults(func=cmd_calculate_amounts)
-    
-    # calculate amounts (percentage-based)
-    calc_range_parser = calc_sub.add_parser("amounts-range", help="Calculate amounts for percentage range")
+
+    # univ3 calculate amounts-range (percentage-based)
+    calc_range_parser = univ3_calc_sub.add_parser("amounts-range", help="Calculate amounts for percentage range")
     calc_range_parser.add_argument("token0", help="Token0 symbol or address")
     calc_range_parser.add_argument("token1", help="Token1 symbol or address")
     calc_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
@@ -622,8 +644,8 @@ def main():
     calc_range_parser.add_argument("--amount1", type=float, help="Desired amount of token1 (specify this OR amount0)")
     calc_range_parser.set_defaults(func=cmd_calculate_amounts)
 
-    # Add liquidity command
-    add_parser = subparsers.add_parser("add", help="Add liquidity")
+    # ── univ3 add ──────────────────────────────────────────────────────
+    add_parser = univ3_sub.add_parser("add", help="Add liquidity")
     add_parser.add_argument("token0", help="Token0 symbol or address")
     add_parser.add_argument("token1", help="Token1 symbol or address")
     add_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
@@ -634,8 +656,8 @@ def main():
     add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
     add_parser.set_defaults(func=cmd_add_liquidity)
 
-    # Add liquidity with percentage range command
-    add_range_parser = subparsers.add_parser("add-range", help="Add liquidity using percentage range")
+    # ── univ3 add-range ────────────────────────────────────────────────
+    add_range_parser = univ3_sub.add_parser("add-range", help="Add liquidity using percentage range")
     add_range_parser.add_argument("token0", help="Token0 symbol or address")
     add_range_parser.add_argument("token1", help="Token1 symbol or address")
     add_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
@@ -646,16 +668,16 @@ def main():
     add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
     add_range_parser.set_defaults(func=cmd_add_liquidity_range)
 
-    # Remove liquidity command
-    remove_parser = subparsers.add_parser("remove", help="Remove liquidity")
+    # ── univ3 remove ───────────────────────────────────────────────────
+    remove_parser = univ3_sub.add_parser("remove", help="Remove liquidity")
     remove_parser.add_argument("token_id", type=int, help="Position token ID")
     remove_parser.add_argument("percentage", type=float, help="Percentage to remove")
     remove_parser.add_argument("--collect-fees", action="store_true", help="Collect fees")
     remove_parser.add_argument("--burn", action="store_true", help="Burn position NFT")
     remove_parser.set_defaults(func=cmd_remove_liquidity)
 
-    # Migrate liquidity command
-    migrate_parser = subparsers.add_parser("migrate", help="Migrate liquidity")
+    # ── univ3 migrate ──────────────────────────────────────────────────
+    migrate_parser = univ3_sub.add_parser("migrate", help="Migrate liquidity")
     migrate_parser.add_argument("token_id", type=int, help="Position token ID")
     migrate_parser.add_argument("tick_lower", type=int, help="New lower tick")
     migrate_parser.add_argument("tick_upper", type=int, help="New upper tick")
@@ -665,45 +687,8 @@ def main():
     migrate_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
     migrate_parser.set_defaults(func=cmd_migrate_liquidity)
 
-    # Wallet command
-    wallet_parser = subparsers.add_parser("wallet", help="Wallet operations")
-    wallet_sub = wallet_parser.add_subparsers(dest="wallet_type")
-
-    wallet_gen_parser = wallet_sub.add_parser("generate", help="Generate new wallet")
-    wallet_gen_parser.add_argument("--accounts", type=int, default=3, help="Number of accounts to derive")
-    wallet_gen_parser.set_defaults(func=cmd_wallet_generate)
-
-    # Quote command for SWAPS (check price without executing)
-    quote_parser = subparsers.add_parser("quote", help="Get SWAP quote - check price before trading")
-    quote_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
-    quote_parser.add_argument("token_out", help="Token to receive (symbol or address)")
-    quote_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
-    quote_parser.add_argument("amount", type=float, help="Amount of token_in to quote")
-    quote_parser.set_defaults(func=cmd_quote)
-
-    # LP Quote command for LIQUIDITY (calculate token amounts needed)
-    lp_quote_parser = subparsers.add_parser("lp-quote", help="Get LP quote - calculate tokens needed for liquidity position")
-    lp_quote_parser.add_argument("token0", help="First token (e.g., WETH)")
-    lp_quote_parser.add_argument("token1", help="Second token (e.g., USDT)")
-    lp_quote_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
-    lp_quote_parser.add_argument("range_lower", type=float, help="Lower bound as decimal (e.g., -0.05 for -5%%)")
-    lp_quote_parser.add_argument("range_upper", type=float, help="Upper bound as decimal (e.g., 0.05 for +5%%)")
-    lp_quote_parser.add_argument("--amount0", type=float, help="Amount of token0 you have")
-    lp_quote_parser.add_argument("--amount1", type=float, help="Amount of token1 you have")
-    lp_quote_parser.set_defaults(func=cmd_lp_quote)
-
-    # Wrap ETH command
-    wrap_parser = subparsers.add_parser("wrap", help="Wrap ETH to WETH")
-    wrap_parser.add_argument("amount", type=float, help="Amount of ETH to wrap")
-    wrap_parser.set_defaults(func=cmd_wrap)
-
-    # Unwrap WETH command
-    unwrap_parser = subparsers.add_parser("unwrap", help="Unwrap WETH to ETH")
-    unwrap_parser.add_argument("amount", type=float, help="Amount of WETH to unwrap")
-    unwrap_parser.set_defaults(func=cmd_unwrap)
-
-    # Swap command
-    swap_parser = subparsers.add_parser("swap", help="Swap tokens")
+    # ── univ3 swap ─────────────────────────────────────────────────────
+    swap_parser = univ3_sub.add_parser("swap", help="Swap tokens")
     swap_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
     swap_parser.add_argument("token_out", help="Token to receive (symbol or address)")
     swap_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
@@ -713,6 +698,26 @@ def main():
     swap_parser.add_argument("--dry-run", action="store_true", help="Simulate swap without executing")
     swap_parser.set_defaults(func=cmd_swap)
 
+    # ── univ3 quote ────────────────────────────────────────────────────
+    quote_parser = univ3_sub.add_parser("quote", help="Get swap quote - check price before trading")
+    quote_parser.add_argument("token_in", help="Token to send (symbol like ETH, WETH, USDT or address)")
+    quote_parser.add_argument("token_out", help="Token to receive (symbol or address)")
+    quote_parser.add_argument("pool", help="Pool name (e.g., WETH_USDT_30)")
+    quote_parser.add_argument("amount", type=float, help="Amount of token_in to quote")
+    quote_parser.set_defaults(func=cmd_quote)
+
+    # ── univ3 lp-quote ─────────────────────────────────────────────────
+    lp_quote_parser = univ3_sub.add_parser("lp-quote", help="Get LP quote - calculate tokens needed for liquidity position")
+    lp_quote_parser.add_argument("token0", help="First token (e.g., WETH)")
+    lp_quote_parser.add_argument("token1", help="Second token (e.g., USDT)")
+    lp_quote_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    lp_quote_parser.add_argument("range_lower", type=float, help="Lower bound as decimal (e.g., -0.05 for -5%%)")
+    lp_quote_parser.add_argument("range_upper", type=float, help="Upper bound as decimal (e.g., 0.05 for +5%%)")
+    lp_quote_parser.add_argument("--amount0", type=float, help="Amount of token0 you have")
+    lp_quote_parser.add_argument("--amount1", type=float, help="Amount of token1 you have")
+    lp_quote_parser.set_defaults(func=cmd_lp_quote)
+
+    # ── Parse and dispatch ─────────────────────────────────────────────
     args = parser.parse_args()
 
     if not args.command:
@@ -727,9 +732,16 @@ def main():
         wallet_parser.print_help()
         sys.exit(1)
 
-    if args.command == "calculate" and not args.calc_type:
-        calc_parser.print_help()
-        sys.exit(1)
+    if args.command == "univ3":
+        if not args.univ3_command:
+            univ3_parser.print_help()
+            sys.exit(1)
+        if args.univ3_command == "query" and not args.univ3_query_type:
+            univ3_query_parser.print_help()
+            sys.exit(1)
+        if args.univ3_command == "calculate" and not args.calc_type:
+            univ3_calc_parser.print_help()
+            sys.exit(1)
 
     try:
         args.func(args)

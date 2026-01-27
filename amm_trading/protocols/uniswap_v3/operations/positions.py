@@ -1,14 +1,15 @@
-"""Position query operations"""
+"""Position query operations for Uniswap V3"""
 
-from ..core.connection import Web3Manager
-from ..core.config import Config
+from ....core.connection import Web3Manager
+from ....core.config import Config
+from ....contracts.erc20 import ERC20
 from ..contracts.nfpm import NFPM
 from ..contracts.pool import Pool
-from ..contracts.erc20 import ERC20
-from ..utils.math import tick_to_price, get_amounts_from_liquidity
+from ..math import tick_to_price, get_amounts_from_liquidity
+from ...base import BasePositionQuery
 
 
-class PositionQuery:
+class PositionQuery(BasePositionQuery):
     """Query Uniswap V3 position information"""
 
     def __init__(self, manager=None):

@@ -2,10 +2,10 @@
 
 import time
 from web3 import Web3
-from ..core.config import Config
-from ..core.exceptions import PositionError
-from ..utils.gas import GasManager
-from ..utils.transactions import TransactionBuilder
+from ....core.config import Config
+from ....core.exceptions import PositionError
+from ....utils.gas import GasManager
+from ....utils.transactions import TransactionBuilder
 
 
 class NFPM:

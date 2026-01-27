@@ -1,19 +1,20 @@
-"""Pool query operations"""
+"""Pool query operations for Uniswap V3"""
 
 import json
 from pathlib import Path
 
-from ..core.connection import Web3Manager
-from ..core.config import Config
+from ....core.connection import Web3Manager
+from ....core.config import Config
+from ....contracts.erc20 import ERC20
 from ..contracts.pool import Pool
-from ..contracts.erc20 import ERC20
-from ..utils.math import tick_to_price
+from ..math import tick_to_price
+from ...base import BasePoolQuery
 
 # Cache file in root folder
 CACHE_FILE = Path.cwd() / "pool_info.json"
 
 
-class PoolQuery:
+class PoolQuery(BasePoolQuery):
     """Query Uniswap V3 pool information"""
 
     def __init__(self, manager=None):

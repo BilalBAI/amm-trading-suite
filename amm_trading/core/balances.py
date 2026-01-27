@@ -1,7 +1,7 @@
 """Token balance query operations"""
 
-from ..core.connection import Web3Manager
-from ..core.config import Config
+from .connection import Web3Manager
+from .config import Config
 from ..contracts.erc20 import ERC20
 
 

@@ -1,13 +1,13 @@
 # AMM Trading Toolkit
 
-A Python package for interacting with Uniswap V3 on Ethereum. Query positions, analyze pools, and manage liquidity programmatically.
+A Python package for interacting with AMM protocols on Ethereum. Currently supports Uniswap V3, with a multi-protocol architecture designed for future expansion (Uniswap V4, Curve, etc.).
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/amm-tools.git
-cd amm-tools
+git clone https://github.com/BilalBAI/amm-trading-suite.git
+cd amm-trading-suite
 
 # Create virtual environment
 python3 -m venv venv
@@ -94,78 +94,71 @@ Where:
 
 ### Command Line
 
+#### General
+
 ```bash
-# Query all configured pools (uses cache for static data)
-amm-trading query pools
-
-# Force refresh static pool data cache
-amm-trading query pools --refresh-cache
-
-# Query specific pool
-amm-trading query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
-
-# Query a position
-amm-trading query univ3-position 1157630
-
-# Query all positions for an address
-amm-trading query univ3-positions --address 0x123...
-
-# Query ETH and token balances for an address
+# Query ETH and token balances (defaults to wallet.env address)
+amm-trading query balances
 amm-trading query balances --address 0x123...
-
-# Calculate optimal token amounts (NEW!)
-# Before adding liquidity, calculate exact amounts needed
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
-amm-trading calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
-
-# Add liquidity (using ticks)
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300
-
-# Add with custom slippage (1%)
-amm-trading add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
-
-# Add liquidity using percentage range (NEW!)
-# Symmetric range: -5% to +5% around current price
-amm-trading add-range WETH USDT 3000 -0.05 0.05 0.1 300
-
-# Asymmetric range: -10% to -1% (below current price)
-amm-trading add-range WETH USDT 3000 -0.10 -0.01 0.1 300
-
-# Above current price: +1% to +10%
-amm-trading add-range WETH USDT 3000 0.01 0.10 0.1 300
-
-# Remove 50% liquidity and collect fees
-amm-trading remove 1157630 50 --collect-fees
-
-# Remove 100% and burn position
-amm-trading remove 1157630 100 --collect-fees --burn
-
-# Migrate liquidity to new range
-amm-trading migrate 1157630 -887220 887220
-
-# Migrate 50% to new range
-amm-trading migrate 1157630 -887220 887220 --percentage 50
-
-# Generate a new wallet
-amm-trading wallet generate
-
-# Generate with 5 accounts
-amm-trading wallet generate --accounts 5
-
-# Swap tokens
-amm-trading swap WETH USDT WETH_USDT_30 0.1
-
-# Swap with custom slippage (1% = 100 basis points)
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --slippage 100
-
-# Swap with custom deadline (60 minutes)
-amm-trading swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 
 # Wrap ETH to WETH
 amm-trading wrap 0.1
 
 # Unwrap WETH to ETH
 amm-trading unwrap 0.1
+
+# Generate a new wallet
+amm-trading wallet generate
+amm-trading wallet generate --accounts 5
+```
+
+#### Uniswap V3 - Queries
+
+```bash
+# Query all configured pools (uses cache for static data)
+amm-trading univ3 query pools
+amm-trading univ3 query pools --refresh-cache
+amm-trading univ3 query pools --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
+
+# Query a position by NFT token ID
+amm-trading univ3 query position 1157630
+
+# Query all positions (defaults to wallet.env address)
+amm-trading univ3 query positions
+amm-trading univ3 query positions --address 0x123...
+
+# Calculate optimal token amounts before adding liquidity
+amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
+amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
+```
+
+#### Uniswap V3 - Liquidity
+
+```bash
+# Add liquidity (using ticks)
+amm-trading univ3 add WETH USDT 3000 -887220 887220 0.1 300
+amm-trading univ3 add WETH USDT 3000 -887220 887220 0.1 300 --slippage 1.0
+
+# Add liquidity using percentage range around current price
+amm-trading univ3 add-range WETH USDT 3000 -0.05 0.05 0.1 300    # -5% to +5%
+amm-trading univ3 add-range WETH USDT 3000 -0.10 -0.01 0.1 300   # -10% to -1% (below)
+amm-trading univ3 add-range WETH USDT 3000 0.01 0.10 0.1 300      # +1% to +10% (above)
+
+# Remove liquidity
+amm-trading univ3 remove 1157630 50 --collect-fees
+amm-trading univ3 remove 1157630 100 --collect-fees --burn
+
+# Migrate liquidity to new range
+amm-trading univ3 migrate 1157630 -887220 887220
+amm-trading univ3 migrate 1157630 -887220 887220 --percentage 50
+```
+
+#### Uniswap V3 - Swaps
+
+```bash
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --slippage 100
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 ```
 
 > **Note:** Gas parameters (maxFeePerGas, maxPriorityFeePerGas, gasLimit) are controlled via `gas_config.json`. See [Gas Management](#gas-management).
@@ -176,8 +169,11 @@ All results are automatically saved to the `results/` folder.
 
 ```python
 from amm_trading import Web3Manager, Config
-from amm_trading.operations import LiquidityManager, PositionQuery, PoolQuery, generate_wallet, SwapManager, BalanceQuery
-from amm_trading.contracts import ERC20, NFPM, Pool
+from amm_trading.protocols.uniswap_v3 import (
+    LiquidityManager, PositionQuery, PoolQuery, SwapManager,
+)
+from amm_trading.contracts import ERC20, WETH
+from amm_trading.core import BalanceQuery, generate_wallet
 
 # Query operations (read-only, no wallet needed)
 query = PositionQuery()
@@ -196,8 +192,7 @@ for bal in balances["balances"]:
     if bal["balance"] > 0:
         print(f"{bal['symbol']}: {bal['balance']}")
 
-# Calculate optimal amounts BEFORE adding liquidity (NEW!)
-from amm_trading import Web3Manager
+# Calculate optimal amounts BEFORE adding liquidity
 web3_manager = Web3Manager(require_signer=False)
 calc_manager = LiquidityManager(manager=web3_manager)
 
@@ -227,7 +222,7 @@ result = manager.add_liquidity(
 )
 print(f"New position ID: {result['token_id']}")
 
-# Add liquidity using percentage range (NEW!)
+# Add liquidity using percentage range
 # Automatically converts percentages to ticks based on current pool price
 result = manager.add_liquidity_range(
     token0="WETH",
@@ -280,9 +275,8 @@ print(f"Tx: {result['tx_hash']}")
 print(f"Swapped {result['token_in']['amount']} {result['token_in']['symbol']}")
 
 # Wrap/Unwrap ETH (requires wallet.env)
-from amm_trading.contracts import WETH
-manager = Web3Manager(require_signer=True)
-weth = WETH(manager)
+w3 = Web3Manager(require_signer=True)
+weth = WETH(w3)
 weth.deposit(0.1)   # Wrap 0.1 ETH to WETH
 weth.withdraw(0.1)  # Unwrap 0.1 WETH to ETH
 ```
@@ -291,7 +285,8 @@ weth.withdraw(0.1)  # Unwrap 0.1 WETH to ETH
 
 ```python
 from amm_trading import Web3Manager
-from amm_trading.contracts import ERC20, NFPM, Pool
+from amm_trading.contracts import ERC20
+from amm_trading.protocols.uniswap_v3 import NFPM, Pool
 
 # Read-only operations
 manager = Web3Manager(require_signer=False)
@@ -300,7 +295,7 @@ manager = Web3Manager(require_signer=False)
 weth = ERC20(manager, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 print(f"{weth.symbol}: {weth.decimals} decimals")
 
-# Get pool info
+# Get pool info (Uniswap V3)
 pool = Pool(manager, "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36")
 print(f"Current tick: {pool.current_tick}")
 print(f"Price: {pool.get_price(18, 6):.2f}")
@@ -318,28 +313,32 @@ print(f"Liquidity: {pos['liquidity']}")
 
 ```
 amm_trading/
-├── core/
-│   ├── config.py        # Configuration management
-│   ├── connection.py    # Web3 connection handling
-│   └── exceptions.py    # Custom exceptions
-├── contracts/
-│   ├── erc20.py         # ERC20 token wrapper
-│   ├── nfpm.py          # NonfungiblePositionManager wrapper
-│   ├── pool.py          # Uniswap V3 Pool wrapper
-│   └── weth.py          # WETH wrap/unwrap operations
-├── operations/
-│   ├── balances.py      # Query token balances
-│   ├── liquidity.py     # Add/remove/migrate liquidity
-│   ├── pools.py         # Query pool information
-│   ├── positions.py     # Query position details
-│   ├── swap.py          # Token swap operations
-│   └── wallet.py        # Wallet generation
-├── utils/
-│   ├── gas.py           # EIP-1559 gas management
-│   ├── math.py          # Tick/price calculations
-│   └── transactions.py  # Transaction helpers
+├── core/                           # Shared infrastructure
+│   ├── config.py                   # Configuration management
+│   ├── connection.py               # Web3 connection handling
+│   ├── exceptions.py               # Custom exceptions
+│   ├── balances.py                 # Query token balances
+│   └── wallet.py                   # Wallet generation
+├── contracts/                      # Shared contract wrappers
+│   ├── erc20.py                    # ERC20 token wrapper
+│   └── weth.py                     # WETH wrap/unwrap operations
+├── protocols/                      # Protocol implementations
+│   ├── base.py                     # Abstract base classes
+│   └── uniswap_v3/                 # Uniswap V3 protocol
+│       ├── contracts/
+│       │   ├── nfpm.py             # NonfungiblePositionManager
+│       │   └── pool.py             # Pool contract wrapper
+│       ├── operations/
+│       │   ├── liquidity.py        # Add/remove/migrate liquidity
+│       │   ├── pools.py            # Query pool information
+│       │   ├── positions.py        # Query position details
+│       │   └── swap.py             # Token swap operations
+│       └── math.py                 # Tick/price calculations
+├── utils/                          # Shared utilities
+│   ├── gas.py                      # EIP-1559 gas management
+│   └── transactions.py             # Transaction helpers
 └── cli/
-    └── main.py          # Command-line interface
+    └── main.py                     # Command-line interface
 ```
 
 ## Fee Tiers
@@ -373,21 +372,21 @@ All CLI commands save results to the `results/` folder:
 
 | Command | Output File |
 |---------|-------------|
-| `query pools` | `results/univ3_pools.json` |
-| `query univ3-position <id>` | `results/univ3_position_<id>.json` |
-| `query univ3-positions` | `results/positions_<address>.json` |
 | `query balances` | `results/balances_<address>.json` |
-| `add ...` | `results/add_liquidity_<id>.json` |
-| `remove ...` | `results/remove_liquidity_<id>.json` |
-| `migrate ...` | `results/migrate_<old>_to_<new>.json` |
 | `wallet generate` | `results/wallet.json` |
-| `swap ...` | `results/swap_<tx_hash>.json` |
+| `univ3 query pools` | `results/univ3_pools.json` |
+| `univ3 query position <id>` | `results/univ3_position_<id>.json` |
+| `univ3 query positions` | `results/positions_<address>.json` |
+| `univ3 add ...` | `results/add_liquidity_<id>.json` |
+| `univ3 remove ...` | `results/remove_liquidity_<id>.json` |
+| `univ3 migrate ...` | `results/migrate_<old>_to_<new>.json` |
+| `univ3 swap ...` | `results/swap_<tx_hash>.json` |
 
 ## Documentation
 
-- **[TICKS_AND_PRICES.md](TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
-- **[PERCENTAGE_RANGES.md](PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
-- **[TOKEN_AMOUNTS_GUIDE.md](TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts (NEW!)
+- **[TICKS_AND_PRICES.md](docs/TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
+- **[PERCENTAGE_RANGES.md](docs/PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
+- **[TOKEN_AMOUNTS_GUIDE.md](docs/TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts
 
 ## Archived Scripts
 
