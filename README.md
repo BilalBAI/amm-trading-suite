@@ -6,8 +6,8 @@ A Python package for interacting with AMM protocols on Ethereum. Currently suppo
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/amm-tools.git
-cd amm-tools
+git clone https://github.com/BilalBAI/amm-trading-suite.git
+cd amm-trading-suite
 
 # Create virtual environment
 python3 -m venv venv
