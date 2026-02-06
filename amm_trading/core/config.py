@@ -7,25 +7,16 @@ from .exceptions import ConfigError
 
 
 class Config:
-    """Centralized configuration manager"""
+    """Centralized configuration manager for shared settings"""
 
     _instance = None
-    _config = None
+    _tokens = None
     _abis = None
 
-    # Default paths (relative to package root or cwd)
-    DEFAULT_CONFIG = "config.json"
-    DEFAULT_ABIS = "abis.json"
+    # Shared ABIs are inside the package (not user-configurable)
+    PACKAGE_ABIS = Path(__file__).parent.parent / "abis.json"
 
-    # Fee tier to tick spacing mapping
-    TICK_SPACING = {
-        100: 1,
-        500: 10,
-        3000: 60,
-        10000: 200,
-    }
-
-    # Constants
+    # Constants (shared across protocols)
     Q96 = 2 ** 96
     Q128 = 2 ** 128
     MAX_UINT128 = 2 ** 128 - 1
@@ -36,82 +27,70 @@ class Config:
         return cls._instance
 
     def __init__(self):
-        if Config._config is None:
+        if Config._tokens is None:
             self._load()
 
-    def _find_file(self, filename):
-        """Find config file in common locations"""
+    def _find_config_dir(self):
+        """Find config directory"""
         # Check environment variable first
         env_path = os.getenv("AMM_CONFIG_DIR")
         if env_path:
-            path = Path(env_path) / filename
+            path = Path(env_path)
             if path.exists():
                 return path
 
         # Check common locations
         locations = [
-            Path.cwd() / filename,                          # Current directory
-            Path(__file__).parent.parent.parent / filename, # Package parent (amm-tools/)
-            Path.home() / ".amm-tools" / filename,          # Home directory
+            Path.cwd() / "config",                              # Current directory
+            Path(__file__).parent.parent.parent / "config",     # Package parent
+            Path.home() / ".amm-trading" / "config",            # Home directory
         ]
 
         for path in locations:
             if path.exists():
                 return path
 
-        raise ConfigError(f"Could not find {filename}. Searched: {[str(p) for p in locations]}")
+        raise ConfigError(f"Could not find config directory. Searched: {[str(p) for p in locations]}")
 
     def _load(self):
         """Load configuration files"""
-        config_path = self._find_file(self.DEFAULT_CONFIG)
-        abis_path = self._find_file(self.DEFAULT_ABIS)
+        config_dir = self._find_config_dir()
 
-        with open(config_path) as f:
-            Config._config = json.load(f)
+        # Load tokens
+        tokens_path = config_dir / "tokens.json"
+        if not tokens_path.exists():
+            raise ConfigError(f"tokens.json not found in {config_dir}")
+        with open(tokens_path) as f:
+            Config._tokens = json.load(f)
 
-        with open(abis_path) as f:
+        # Load shared ABIs from package
+        if not self.PACKAGE_ABIS.exists():
+            raise ConfigError(f"Shared ABIs not found: {self.PACKAGE_ABIS}")
+        with open(self.PACKAGE_ABIS) as f:
             Config._abis = json.load(f)
-
-    @property
-    def contracts(self):
-        """Contract addresses"""
-        return Config._config.get("contracts", {})
 
     @property
     def common_tokens(self):
         """Common token symbol -> address mapping"""
-        return Config._config.get("common_tokens", {})
-
-    @property
-    def pools(self):
-        """Pool name -> address mapping"""
-        return Config._config.get("univ3_pools", {})
-
-    @property
-    def nfpm_address(self):
-        """NonfungiblePositionManager address"""
-        return self.contracts.get("uniswap_v3_nfpm")
-
-    @property
-    def factory_address(self):
-        """Uniswap V3 Factory address"""
-        return self.contracts.get("uniswap_v3_factory")
-
-    @property
-    def router_address(self):
-        """Uniswap V3 SwapRouter address"""
-        return self.contracts.get("uniswap_v3_router")
-
-    @property
-    def quoter_address(self):
-        """Uniswap V3 QuoterV2 address"""
-        return self.contracts.get("uniswap_v3_quoter")
+        return Config._tokens or {}
 
     def get_abi(self, name):
-        """Get ABI by name"""
-        if name not in Config._abis:
-            raise ConfigError(f"ABI not found: {name}")
-        return Config._abis[name]
+        """
+        Get ABI by name.
+
+        First checks shared ABIs, then delegates to protocol-specific configs
+        for protocol-prefixed names (e.g., "uniswap_v3_pool").
+        """
+        # Check shared ABIs first
+        if name in Config._abis:
+            return Config._abis[name]
+
+        # Delegate to protocol-specific configs for prefixed names
+        if name.startswith("uniswap_v3_"):
+            from ..protocols.uniswap_v3.config import UniswapV3Config
+            return UniswapV3Config().get_abi(name)
+
+        raise ConfigError(f"ABI not found: {name}")
 
     def get_token_address(self, symbol_or_address):
         """Resolve token symbol to address, or validate address"""
@@ -124,9 +103,3 @@ class Config:
             return symbol_or_address
 
         raise ConfigError(f"Unknown token: {symbol_or_address}")
-
-    def get_tick_spacing(self, fee):
-        """Get tick spacing for fee tier"""
-        if fee not in self.TICK_SPACING:
-            raise ConfigError(f"Invalid fee tier: {fee}. Valid: {list(self.TICK_SPACING.keys())}")
-        return self.TICK_SPACING[fee]

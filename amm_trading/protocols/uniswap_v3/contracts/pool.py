@@ -1,6 +1,6 @@
 """Uniswap V3 Pool contract wrapper"""
 
-from ....core.config import Config
+from ..config import UniswapV3Config
 
 
 class Pool:
@@ -15,7 +15,7 @@ class Pool:
         self.manager = manager
         self.address = manager.checksum(address)
         self.contract = manager.get_contract(address, "uniswap_v3_pool")
-        self.config = Config()
+        self.config = UniswapV3Config()
         self._slot0_cache = None
 
     def slot0(self, use_cache=False):

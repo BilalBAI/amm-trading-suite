@@ -1,0 +1,38 @@
+{
+    "mainnet": {
+        "nfpm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+        "router": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "quoter": "0x61fFE014bA17989E743c5F6cB21bF9697530B21e"
+    },
+    "arbitrum": {
+        "nfpm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+        "router": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "quoter": "0x61fFE014bA17989E743c5F6cB21bF9697530B21e"
+    },
+    "optimism": {
+        "nfpm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+        "router": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "quoter": "0x61fFE014bA17989E743c5F6cB21bF9697530B21e"
+    },
+    "base": {
+        "nfpm": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+        "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+        "router": "0x2626664c2603336E57B271c5C0b26F421741e481",
+        "quoter": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a"
+    },
+    "polygon": {
+        "nfpm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+        "router": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "quoter": "0x61fFE014bA17989E743c5F6cB21bF9697530B21e"
+    },
+    "fee_tiers": {
+        "100": {"percent": "0.01%", "tick_spacing": 1},
+        "500": {"percent": "0.05%", "tick_spacing": 10},
+        "3000": {"percent": "0.3%", "tick_spacing": 60},
+        "10000": {"percent": "1%", "tick_spacing": 200}
+    }
+}

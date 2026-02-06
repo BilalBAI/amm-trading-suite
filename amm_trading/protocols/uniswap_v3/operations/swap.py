@@ -4,7 +4,7 @@ import time
 from web3 import Web3
 
 from ....core.connection import Web3Manager
-from ....core.config import Config
+from ..config import UniswapV3Config
 from ....core.exceptions import ConfigError, InsufficientBalanceError
 from ....contracts.erc20 import ERC20
 from ...base import BaseSwapManager
@@ -23,7 +23,7 @@ class SwapManager(BaseSwapManager):
             require_signer: If True, require private key for transactions
         """
         self.manager = manager or Web3Manager(require_signer=require_signer)
-        self.config = Config()
+        self.config = UniswapV3Config()
         self.router_address = self.manager.checksum(self.config.router_address)
         self.router = self.manager.get_contract(self.router_address, "uniswap_v3_router")
         self.quoter_address = self.manager.checksum(self.config.quoter_address)

@@ -2,7 +2,7 @@
 
 import time
 from web3 import Web3
-from ....core.config import Config
+from ..config import UniswapV3Config
 from ....core.exceptions import PositionError
 from ....utils.gas import GasManager
 from ....utils.transactions import TransactionBuilder
@@ -19,7 +19,7 @@ class NFPM:
         Gas parameters are loaded from gas_config.json.
         """
         self.manager = manager
-        self.config = Config()
+        self.config = UniswapV3Config()
         self.address = manager.checksum(self.config.nfpm_address)
         self.contract = manager.get_contract(self.address, "uniswap_v3_nfpm")
 

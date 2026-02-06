@@ -1,7 +1,7 @@
 """Position query operations for Uniswap V3"""
 
 from ....core.connection import Web3Manager
-from ....core.config import Config
+from ..config import UniswapV3Config
 from ....contracts.erc20 import ERC20
 from ..contracts.nfpm import NFPM
 from ..contracts.pool import Pool
@@ -18,7 +18,7 @@ class PositionQuery(BasePositionQuery):
             manager: Web3Manager instance (created if None)
         """
         self.manager = manager or Web3Manager(require_signer=False)
-        self.config = Config()
+        self.config = UniswapV3Config()
         self.nfpm = NFPM(self.manager)
         self._factory = None
 

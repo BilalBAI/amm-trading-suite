@@ -32,16 +32,18 @@ PRIVATE_KEY=your_private_key_here
 
 > **Warning:** Never commit `wallet.env` to version control!
 
-3. Configure gas parameters in `gas_config.json` (see [Gas Management](#gas-management) below).
+3. The `config/` folder contains user-configurable settings:
+```
+config/
+├── tokens.json              # Common token addresses
+├── gas.json                 # Gas parameters
+└── uniswap_v3/
+    └── pools.json           # V3 pool addresses
+```
 
 ## Gas Management
 
-All gas parameters are centrally controlled via `gas_config.json`. This file must exist in one of these locations (searched in order):
-- Current working directory
-- `~/.amm-trading-suite/gas_config.json`
-- Package root directory
-
-### Configuration File
+Gas parameters are configured in `config/gas.json`:
 
 ```json
 {
@@ -49,16 +51,8 @@ All gas parameters are centrally controlled via `gas_config.json`. This file mus
     "maxPriorityFeePerGas": 1.5,
     "gasLimit": {
         "approve": 65000,
-        "transfer": 65000,
         "mint": 500000,
-        "increaseLiquidity": 400000,
-        "decreaseLiquidity": 200000,
-        "collect": 150000,
-        "burn": 100000,
         "swap": 200000,
-        "swapMultihop": 350000,
-        "wrap": 50000,
-        "unwrap": 50000,
         "default": 500000
     }
 }
@@ -312,33 +306,44 @@ print(f"Liquidity: {pos['liquidity']}")
 ## Package Structure
 
 ```
-amm_trading/
-├── core/                           # Shared infrastructure
-│   ├── config.py                   # Configuration management
-│   ├── connection.py               # Web3 connection handling
-│   ├── exceptions.py               # Custom exceptions
-│   ├── balances.py                 # Query token balances
-│   └── wallet.py                   # Wallet generation
-├── contracts/                      # Shared contract wrappers
-│   ├── erc20.py                    # ERC20 token wrapper
-│   └── weth.py                     # WETH wrap/unwrap operations
-├── protocols/                      # Protocol implementations
-│   ├── base.py                     # Abstract base classes
-│   └── uniswap_v3/                 # Uniswap V3 protocol
-│       ├── contracts/
-│       │   ├── nfpm.py             # NonfungiblePositionManager
-│       │   └── pool.py             # Pool contract wrapper
-│       ├── operations/
-│       │   ├── liquidity.py        # Add/remove/migrate liquidity
-│       │   ├── pools.py            # Query pool information
-│       │   ├── positions.py        # Query position details
-│       │   └── swap.py             # Token swap operations
-│       └── math.py                 # Tick/price calculations
-├── utils/                          # Shared utilities
-│   ├── gas.py                      # EIP-1559 gas management
-│   └── transactions.py             # Transaction helpers
-└── cli/
-    └── main.py                     # Command-line interface
+amm-trading-suite/
+├── config/                         # User-configurable settings
+│   ├── tokens.json                 # Common token addresses
+│   ├── gas.json                    # Gas parameters (all protocols)
+│   └── uniswap_v3/
+│       └── pools.json              # V3 pool addresses
+├── univ3_pool_cache.json           # V3 pool cache (auto-generated)
+└── amm_trading/
+    ├── abis.json                   # Shared ABIs (ERC20, WETH)
+    ├── core/                       # Shared infrastructure
+    │   ├── config.py               # Shared configuration management
+    │   ├── connection.py           # Web3 connection handling
+    │   ├── exceptions.py           # Custom exceptions
+    │   ├── balances.py             # Query token balances
+    │   └── wallet.py               # Wallet generation
+    ├── contracts/                  # Shared contract wrappers
+    │   ├── erc20.py                # ERC20 token wrapper
+    │   └── weth.py                 # WETH wrap/unwrap operations
+    ├── protocols/                  # Protocol implementations
+    │   ├── base.py                 # Abstract base classes
+    │   └── uniswap_v3/             # Uniswap V3 protocol
+    │       ├── addresses.json      # V3 contract addresses (multi-chain)
+    │       ├── abis.json           # V3-specific ABIs
+    │       ├── config.py           # UniswapV3Config class
+    │       ├── math.py             # Tick/price calculations
+    │       ├── contracts/
+    │       │   ├── nfpm.py         # NonfungiblePositionManager
+    │       │   └── pool.py         # Pool contract wrapper
+    │       └── operations/
+    │           ├── liquidity.py    # Add/remove/migrate liquidity
+    │           ├── pools.py        # Query pool information
+    │           ├── positions.py    # Query position details
+    │           └── swap.py         # Token swap operations
+    ├── utils/                      # Shared utilities
+    │   ├── gas.py                  # EIP-1559 gas management
+    │   └── transactions.py         # Transaction helpers
+    └── cli/
+        └── main.py                 # Command-line interface
 ```
 
 ## Fee Tiers
@@ -354,7 +359,7 @@ amm_trading/
 
 Pool queries use a cache for static data (token info, fee tier, tick spacing) to reduce RPC calls.
 
-- **Cache file:** `pool_info.json` (root folder)
+- **Cache file:** `univ3_pool_cache.json` (working directory)
 - **First query:** ~6 RPC calls per pool
 - **Subsequent queries:** ~2 RPC calls per pool (~70% reduction)
 

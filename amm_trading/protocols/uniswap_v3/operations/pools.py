@@ -4,14 +4,14 @@ import json
 from pathlib import Path
 
 from ....core.connection import Web3Manager
-from ....core.config import Config
+from ..config import UniswapV3Config
 from ....contracts.erc20 import ERC20
 from ..contracts.pool import Pool
 from ..math import tick_to_price
 from ...base import BasePoolQuery
 
-# Cache file in root folder
-CACHE_FILE = Path.cwd() / "pool_info.json"
+# Cache file in working directory (V3-specific)
+CACHE_FILE = Path.cwd() / "univ3_pool_cache.json"
 
 
 class PoolQuery(BasePoolQuery):
@@ -23,7 +23,7 @@ class PoolQuery(BasePoolQuery):
             manager: Web3Manager instance (created if None)
         """
         self.manager = manager or Web3Manager(require_signer=False)
-        self.config = Config()
+        self.config = UniswapV3Config()
         self._cache = None  # Internal dict for fast lookup
 
     def _load_cache(self):

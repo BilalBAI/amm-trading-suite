@@ -40,9 +40,9 @@ class GasConfig:
         """Load config from file or return defaults"""
         search_paths = [
             config_path,
-            Path.cwd() / "gas_config.json",
-            Path.home() / ".amm-tools" / "gas_config.json",
-            Path(__file__).parent.parent.parent / "gas_config.json",
+            Path.cwd() / "config" / "gas.json",
+            Path(__file__).parent.parent.parent / "config" / "gas.json",
+            Path.home() / ".amm-trading" / "config" / "gas.json",
         ]
 
         for path in search_paths:

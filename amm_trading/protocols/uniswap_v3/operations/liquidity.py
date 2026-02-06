@@ -2,7 +2,7 @@
 
 import time
 from ....core.connection import Web3Manager
-from ....core.config import Config
+from ..config import UniswapV3Config
 from ....core.exceptions import InsufficientBalanceError, PositionError
 from ....contracts.erc20 import ERC20
 from ..contracts.nfpm import NFPM
@@ -33,7 +33,7 @@ class LiquidityManager(BaseLiquidityManager):
         Gas parameters are loaded from gas_config.json.
         """
         self.manager = manager or Web3Manager(require_signer=True)
-        self.config = Config()
+        self.config = UniswapV3Config()
         self.nfpm = NFPM(self.manager)
 
     def _get_token_address(self, symbol_or_address):
