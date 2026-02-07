@@ -90,6 +90,12 @@ class Config:
             from ..protocols.uniswap_v3.config import UniswapV3Config
             return UniswapV3Config().get_abi(name)
 
+        # Delegate to V4 config for V4 contract names
+        v4_abi_names = {"poolManager", "positionManager", "stateView", "quoter", "universalRouter"}
+        if name in v4_abi_names:
+            from ..protocols.uniswap_v4.config import UniswapV4Config
+            return UniswapV4Config().get_abi(name)
+
         raise ConfigError(f"ABI not found: {name}")
 
     def get_token_address(self, symbol_or_address):

@@ -3,7 +3,7 @@
         "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
         "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
         "stateView": "0x7fFe42C4a5DEeA5b0fEC41C94C136Cf115597227",
-        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD86E8203",
+        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD9E1203",
         "universalRouter": "0x66a9893cC07D91D95644Aedd05D03f95e1dba8Af",
         "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
@@ -11,7 +11,7 @@
         "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
         "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
         "stateView": "0x7fFe42C4a5DEeA5b0fEC41C94C136Cf115597227",
-        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD86E8203",
+        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD9E1203",
         "universalRouter": "0x66a9893cC07D91D95644Aedd05D03f95e1dba8Af",
         "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
@@ -19,7 +19,7 @@
         "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
         "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
         "stateView": "0x7fFe42C4a5DEeA5b0fEC41C94C136Cf115597227",
-        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD86E8203",
+        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD9E1203",
         "universalRouter": "0x66a9893cC07D91D95644Aedd05D03f95e1dba8Af",
         "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
@@ -27,7 +27,7 @@
         "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
         "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
         "stateView": "0x7fFe42C4a5DEeA5b0fEC41C94C136Cf115597227",
-        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD86E8203",
+        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD9E1203",
         "universalRouter": "0x66a9893cC07D91D95644Aedd05D03f95e1dba8Af",
         "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
@@ -35,7 +35,7 @@
         "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
         "positionManager": "0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e",
         "stateView": "0x7fFe42C4a5DEeA5b0fEC41C94C136Cf115597227",
-        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD86E8203",
+        "quoter": "0x52f0E24D1C21c8A0CB1e5a5dD6198556BD9E1203",
         "universalRouter": "0x66a9893cC07D91D95644Aedd05D03f95e1dba8Af",
         "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },

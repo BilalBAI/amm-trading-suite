@@ -178,6 +178,7 @@ amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0
 amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0 --dry-run
 
 # Calculate optimal amounts
+amm-trading univ4 calculate amounts ETH USDC 3000 -1000 1000 --amount0 1.0
 amm-trading univ4 calculate amounts-range ETH USDC 3000 -0.05 0.05 --amount0 1.0
 
 # Add liquidity with native ETH
