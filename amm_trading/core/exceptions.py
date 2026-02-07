@@ -29,3 +29,13 @@ class InsufficientBalanceError(AMMError):
 class PositionError(AMMError):
     """Position-related errors (not found, not owned, etc.)"""
     pass
+
+
+class PoolError(AMMError):
+    """Pool-related errors (not found, not initialized, etc.)"""
+    pass
+
+
+class QuoteError(AMMError):
+    """Quote-related errors (failed to get quote, etc.)"""
+    pass

@@ -14,11 +14,18 @@
         "swapMultihop": 350000,
         "wrap": 50000,
         "unwrap": 50000,
-        "default": 500000
+        "default": 500000,
+        "v4_mint": 450000,
+        "v4_decreaseLiquidity": 180000,
+        "v4_collect": 130000,
+        "v4_burn": 80000,
+        "v4_swap": 180000,
+        "v4_swap_native": 150000
     },
     "notes": {
         "maxFeePerGas": "Maximum total fee per gas in Gwei. Set to null for no limit (use network rate).",
         "maxPriorityFeePerGas": "Tip to validators in Gwei. Higher = faster inclusion. Typical: 0.1-3 Gwei.",
-        "gasLimit": "Maximum gas units per transaction type. Transaction fails if exceeded."
+        "gasLimit": "Maximum gas units per transaction type. Transaction fails if exceeded.",
+        "v4_note": "V4 operations are generally cheaper due to singleton architecture and flash accounting."
     }
 }

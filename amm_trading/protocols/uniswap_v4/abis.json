@@ -1,0 +1,269 @@
+{
+    "poolManager": [
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {"name": "currency0", "type": "address"},
+                        {"name": "currency1", "type": "address"},
+                        {"name": "fee", "type": "uint24"},
+                        {"name": "tickSpacing", "type": "int24"},
+                        {"name": "hooks", "type": "address"}
+                    ],
+                    "name": "key",
+                    "type": "tuple"
+                },
+                {"name": "sqrtPriceX96", "type": "uint160"}
+            ],
+            "name": "initialize",
+            "outputs": [{"name": "tick", "type": "int24"}],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ],
+    "stateView": [
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {"name": "currency0", "type": "address"},
+                        {"name": "currency1", "type": "address"},
+                        {"name": "fee", "type": "uint24"},
+                        {"name": "tickSpacing", "type": "int24"},
+                        {"name": "hooks", "type": "address"}
+                    ],
+                    "name": "poolKey",
+                    "type": "tuple"
+                }
+            ],
+            "name": "getSlot0",
+            "outputs": [
+                {"name": "sqrtPriceX96", "type": "uint160"},
+                {"name": "tick", "type": "int24"},
+                {"name": "protocolFee", "type": "uint24"},
+                {"name": "lpFee", "type": "uint24"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {"name": "currency0", "type": "address"},
+                        {"name": "currency1", "type": "address"},
+                        {"name": "fee", "type": "uint24"},
+                        {"name": "tickSpacing", "type": "int24"},
+                        {"name": "hooks", "type": "address"}
+                    ],
+                    "name": "poolKey",
+                    "type": "tuple"
+                }
+            ],
+            "name": "getLiquidity",
+            "outputs": [{"name": "", "type": "uint128"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"name": "poolId", "type": "bytes32"},
+                {"name": "owner", "type": "address"},
+                {"name": "tickLower", "type": "int24"},
+                {"name": "tickUpper", "type": "int24"},
+                {"name": "salt", "type": "bytes32"}
+            ],
+            "name": "getPositionInfo",
+            "outputs": [
+                {"name": "liquidity", "type": "uint128"},
+                {"name": "feeGrowthInside0LastX128", "type": "uint256"},
+                {"name": "feeGrowthInside1LastX128", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {"name": "currency0", "type": "address"},
+                        {"name": "currency1", "type": "address"},
+                        {"name": "fee", "type": "uint24"},
+                        {"name": "tickSpacing", "type": "int24"},
+                        {"name": "hooks", "type": "address"}
+                    ],
+                    "name": "poolKey",
+                    "type": "tuple"
+                },
+                {"name": "tick", "type": "int24"}
+            ],
+            "name": "getTickInfo",
+            "outputs": [
+                {"name": "liquidityGross", "type": "uint128"},
+                {"name": "liquidityNet", "type": "int128"},
+                {"name": "feeGrowthOutside0X128", "type": "uint256"},
+                {"name": "feeGrowthOutside1X128", "type": "uint256"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ],
+    "positionManager": [
+        {
+            "inputs": [{"name": "owner", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [{"name": "tokenId", "type": "uint256"}],
+            "name": "ownerOf",
+            "outputs": [{"name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"name": "owner", "type": "address"},
+                {"name": "index", "type": "uint256"}
+            ],
+            "name": "tokenOfOwnerByIndex",
+            "outputs": [{"name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [{"name": "tokenId", "type": "uint256"}],
+            "name": "getPositionInfo",
+            "outputs": [
+                {
+                    "components": [
+                        {"name": "currency0", "type": "address"},
+                        {"name": "currency1", "type": "address"},
+                        {"name": "fee", "type": "uint24"},
+                        {"name": "tickSpacing", "type": "int24"},
+                        {"name": "hooks", "type": "address"}
+                    ],
+                    "name": "poolKey",
+                    "type": "tuple"
+                },
+                {"name": "tickLower", "type": "int24"},
+                {"name": "tickUpper", "type": "int24"},
+                {"name": "liquidity", "type": "uint128"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"name": "unlockData", "type": "bytes"},
+                {"name": "deadline", "type": "uint256"}
+            ],
+            "name": "modifyLiquidities",
+            "outputs": [{"name": "returnData", "type": "bytes"}],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {"name": "unlockData", "type": "bytes"},
+                {"name": "deadline", "type": "uint256"}
+            ],
+            "name": "modifyLiquiditiesWithoutUnlock",
+            "outputs": [{"name": "returnData", "type": "bytes"}],
+            "stateMutability": "payable",
+            "type": "function"
+        }
+    ],
+    "quoter": [
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {
+                            "components": [
+                                {"name": "currency0", "type": "address"},
+                                {"name": "currency1", "type": "address"},
+                                {"name": "fee", "type": "uint24"},
+                                {"name": "tickSpacing", "type": "int24"},
+                                {"name": "hooks", "type": "address"}
+                            ],
+                            "name": "poolKey",
+                            "type": "tuple"
+                        },
+                        {"name": "zeroForOne", "type": "bool"},
+                        {"name": "exactAmount", "type": "uint128"},
+                        {"name": "sqrtPriceLimitX96", "type": "uint160"},
+                        {"name": "hookData", "type": "bytes"}
+                    ],
+                    "name": "params",
+                    "type": "tuple"
+                }
+            ],
+            "name": "quoteExactInputSingle",
+            "outputs": [
+                {"name": "amountOut", "type": "uint256"},
+                {"name": "gasEstimate", "type": "uint256"}
+            ],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "components": [
+                        {
+                            "components": [
+                                {"name": "currency0", "type": "address"},
+                                {"name": "currency1", "type": "address"},
+                                {"name": "fee", "type": "uint24"},
+                                {"name": "tickSpacing", "type": "int24"},
+                                {"name": "hooks", "type": "address"}
+                            ],
+                            "name": "poolKey",
+                            "type": "tuple"
+                        },
+                        {"name": "zeroForOne", "type": "bool"},
+                        {"name": "exactAmount", "type": "uint128"},
+                        {"name": "sqrtPriceLimitX96", "type": "uint160"},
+                        {"name": "hookData", "type": "bytes"}
+                    ],
+                    "name": "params",
+                    "type": "tuple"
+                }
+            ],
+            "name": "quoteExactOutputSingle",
+            "outputs": [
+                {"name": "amountIn", "type": "uint256"},
+                {"name": "gasEstimate", "type": "uint256"}
+            ],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ],
+    "universalRouter": [
+        {
+            "inputs": [
+                {"name": "commands", "type": "bytes"},
+                {"name": "inputs", "type": "bytes[]"},
+                {"name": "deadline", "type": "uint256"}
+            ],
+            "name": "execute",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        }
+    ],
+    "events": {
+        "positionMinted": {
+            "anonymous": false,
+            "inputs": [
+                {"indexed": true, "name": "tokenId", "type": "uint256"},
+                {"indexed": false, "name": "liquidity", "type": "uint128"}
+            ],
+            "name": "Transfer",
+            "type": "event"
+        }
+    }
+}

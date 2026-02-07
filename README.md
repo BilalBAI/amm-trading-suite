@@ -1,6 +1,6 @@
 # AMM Trading Toolkit
 
-A Python package for interacting with AMM protocols on Ethereum. Currently supports Uniswap V3, with a multi-protocol architecture designed for future expansion (Uniswap V4, Curve, etc.).
+A Python package for interacting with AMM protocols on Ethereum. Supports **Uniswap V3** and **Uniswap V4** (with native ETH support), with a multi-protocol architecture designed for future expansion.
 
 ## Installation
 
@@ -37,8 +37,10 @@ PRIVATE_KEY=your_private_key_here
 config/
 ├── tokens.json              # Common token addresses
 ├── gas.json                 # Gas parameters
-└── uniswap_v3/
-    └── pools.json           # V3 pool addresses
+├── uniswap_v3/
+│   └── pools.json           # V3 pool addresses
+└── uniswap_v4/
+    └── pools.json           # V4 pool configurations (with PoolKey)
 ```
 
 ## Gas Management
@@ -154,6 +156,39 @@ amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1
 amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --slippage 100
 amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --deadline 60
 ```
+
+#### Uniswap V4 - Native ETH Support
+
+V4 supports native ETH directly - no WETH wrapping needed!
+
+```bash
+# Query V4 pools
+amm-trading univ4 query pools
+amm-trading univ4 query pools --name ETH_USDC_30
+
+# Query positions
+amm-trading univ4 query position 12345
+amm-trading univ4 query positions
+
+# Get swap quote with native ETH
+amm-trading univ4 quote ETH USDC ETH_USDC_30 1.0
+
+# Swap native ETH (no wrapping needed!)
+amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0
+amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0 --dry-run
+
+# Calculate optimal amounts
+amm-trading univ4 calculate amounts-range ETH USDC 3000 -0.05 0.05 --amount0 1.0
+
+# Add liquidity with native ETH
+amm-trading univ4 add ETH USDC 3000 -1000 1000 1.0 2000
+amm-trading univ4 add-range ETH USDC 3000 -0.05 0.05 1.0 2000
+
+# Remove liquidity
+amm-trading univ4 remove 12345 100 --collect-fees --burn
+```
+
+See [docs/UNISWAP_V4_GUIDE.md](docs/UNISWAP_V4_GUIDE.md) for V4 architecture details.
 
 > **Note:** Gas parameters (maxFeePerGas, maxPriorityFeePerGas, gasLimit) are controlled via `gas_config.json`. See [Gas Management](#gas-management).
 
@@ -310,9 +345,15 @@ amm-trading-suite/
 ├── config/                         # User-configurable settings
 │   ├── tokens.json                 # Common token addresses
 │   ├── gas.json                    # Gas parameters (all protocols)
-│   └── uniswap_v3/
-│       └── pools.json              # V3 pool addresses
+│   ├── uniswap_v3/
+│   │   └── pools.json              # V3 pool addresses
+│   └── uniswap_v4/
+│       └── pools.json              # V4 pool configurations
+├── docs/
+│   ├── UNISWAP_V4_GUIDE.md         # V4 architecture guide
+│   └── ...                         # Other documentation
 ├── univ3_pool_cache.json           # V3 pool cache (auto-generated)
+├── univ4_pool_cache.json           # V4 pool cache (auto-generated)
 └── amm_trading/
     ├── abis.json                   # Shared ABIs (ERC20, WETH)
     ├── core/                       # Shared infrastructure
@@ -326,19 +367,36 @@ amm-trading-suite/
     │   └── weth.py                 # WETH wrap/unwrap operations
     ├── protocols/                  # Protocol implementations
     │   ├── base.py                 # Abstract base classes
-    │   └── uniswap_v3/             # Uniswap V3 protocol
-    │       ├── addresses.json      # V3 contract addresses (multi-chain)
-    │       ├── abis.json           # V3-specific ABIs
-    │       ├── config.py           # UniswapV3Config class
-    │       ├── math.py             # Tick/price calculations
+    │   ├── uniswap_v3/             # Uniswap V3 protocol
+    │   │   ├── addresses.json      # V3 contract addresses (multi-chain)
+    │   │   ├── abis.json           # V3-specific ABIs
+    │   │   ├── config.py           # UniswapV3Config class
+    │   │   ├── math.py             # Tick/price calculations
+    │   │   ├── contracts/
+    │   │   │   ├── nfpm.py         # NonfungiblePositionManager
+    │   │   │   └── pool.py         # Pool contract wrapper
+    │   │   └── operations/
+    │   │       ├── liquidity.py    # Add/remove/migrate liquidity
+    │   │       ├── pools.py        # Query pool information
+    │   │       ├── positions.py    # Query position details
+    │   │       └── swap.py         # Token swap operations
+    │   └── uniswap_v4/             # Uniswap V4 protocol (native ETH!)
+    │       ├── addresses.json      # V4 contract addresses
+    │       ├── abis.json           # V4-specific ABIs
+    │       ├── config.py           # UniswapV4Config class
+    │       ├── types.py            # PoolKey, Actions, helpers
+    │       ├── encoding.py         # Action encoding
+    │       ├── math.py             # V4 math (extends V3)
     │       ├── contracts/
-    │       │   ├── nfpm.py         # NonfungiblePositionManager
-    │       │   └── pool.py         # Pool contract wrapper
+    │       │   ├── pool_manager.py # Singleton PoolManager
+    │       │   ├── position_manager.py  # Command-based positions
+    │       │   ├── state_view.py   # Read-only queries
+    │       │   └── quoter.py       # Swap quotes
     │       └── operations/
-    │           ├── liquidity.py    # Add/remove/migrate liquidity
-    │           ├── pools.py        # Query pool information
+    │           ├── liquidity.py    # Native ETH liquidity
+    │           ├── pools.py        # Query pool by PoolKey
     │           ├── positions.py    # Query position details
-    │           └── swap.py         # Token swap operations
+    │           └── swap.py         # Native ETH swaps
     ├── utils/                      # Shared utilities
     │   ├── gas.py                  # EIP-1559 gas management
     │   └── transactions.py         # Transaction helpers
@@ -386,10 +444,15 @@ All CLI commands save results to the `results/` folder:
 | `univ3 remove ...` | `results/remove_liquidity_<id>.json` |
 | `univ3 migrate ...` | `results/migrate_<old>_to_<new>.json` |
 | `univ3 swap ...` | `results/swap_<tx_hash>.json` |
+| `univ4 query pools` | `results/univ4_pools.json` |
+| `univ4 query position <id>` | `results/univ4_position_<id>.json` |
+| `univ4 add ...` | `results/univ4_add_liquidity_<id>.json` |
+| `univ4 swap ...` | `results/univ4_swap_<tx_hash>.json` |
 
 ## Documentation
 
-- **[TICKS_AND_PRICES.md](docs/TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3
+- **[UNISWAP_V4_GUIDE.md](docs/UNISWAP_V4_GUIDE.md)** - V4 architecture, native ETH, PoolKey, and CLI usage
+- **[TICKS_AND_PRICES.md](docs/TICKS_AND_PRICES.md)** - Understanding ticks, prices, and the math behind Uniswap V3/V4
 - **[PERCENTAGE_RANGES.md](docs/PERCENTAGE_RANGES.md)** - Guide to adding liquidity using percentage ranges
 - **[TOKEN_AMOUNTS_GUIDE.md](docs/TOKEN_AMOUNTS_GUIDE.md)** - Understanding token ratios and calculating optimal amounts
 

@@ -7,6 +7,12 @@ import argparse
 from pathlib import Path
 
 from ..protocols.uniswap_v3 import PoolQuery, PositionQuery, LiquidityManager, SwapManager
+from ..protocols.uniswap_v4 import (
+    PoolQuery as V4PoolQuery,
+    PositionQuery as V4PositionQuery,
+    LiquidityManager as V4LiquidityManager,
+    SwapManager as V4SwapManager,
+)
 from ..core.wallet import generate_wallet
 from ..core.balances import BalanceQuery
 from ..core.connection import Web3Manager
@@ -561,6 +567,309 @@ def cmd_swap(args):
     print(f"\nSaved to {filepath}", file=sys.stderr)
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# UNISWAP V4 COMMAND HANDLERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def cmd_v4_query_pools(args):
+    """Query V4 pool information"""
+    query = V4PoolQuery()
+
+    if args.refresh_cache:
+        query.refresh_cache(args.name if hasattr(args, 'name') else None)
+        print("Cache refreshed.", file=sys.stderr)
+
+    if hasattr(args, 'name') and args.name:
+        result = query.get_pool_info(args.name)
+        filename = f"univ4_pool_{args.name}.json"
+    else:
+        result = query.get_all_configured_pools()
+        filename = "univ4_pools.json"
+
+    print(json.dumps(result, indent=2, default=str))
+    filepath = save_result(filename, result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_query_position(args):
+    """Query V4 position information"""
+    query = V4PositionQuery()
+    result = query.get_position(args.token_id)
+
+    print(json.dumps(result, indent=2, default=str))
+    filepath = save_result(f"univ4_position_{args.token_id}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_query_positions(args):
+    """Query all V4 positions for address"""
+    query = V4PositionQuery()
+    address = args.address or query.manager.address
+    result = query.get_positions_for_address(address)
+
+    print(json.dumps(result, indent=2, default=str))
+    short_addr = address[:10] if address else "unknown"
+    filepath = save_result(f"univ4_positions_{short_addr}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_quote(args):
+    """Get V4 swap quote without executing"""
+    manager = V4SwapManager(require_signer=False)
+
+    result = manager.quote(
+        token_in=args.token_in,
+        token_out=args.token_out,
+        pool_name=args.pool,
+        amount_in=args.amount,
+    )
+
+    # Compact output for traders
+    print("=" * 60)
+    print(f"V4 QUOTE: {args.amount} {result['token_in']['symbol']} -> {result['token_out']['symbol']}")
+    print("=" * 60)
+    print(f"\n  Expected output: {result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+    print(f"  Price: {result['price']['rate_formatted']}")
+    print(f"  Pool: {result['pool']} ({result['fee_percent']} fee)")
+
+    if result['token_in'].get('is_native_eth') or result['token_out'].get('is_native_eth'):
+        print(f"\n  Native ETH: Yes (no WETH wrapping needed)")
+
+    print(f"\n  Gas estimate: {result['gas']['estimate']} units")
+    print(f"  Gas price: {result['gas']['price_gwei']:.2f} gwei")
+    print(f"  Gas cost: {result['gas']['cost_eth']:.6f} ETH")
+
+    if result['token_in']['sufficient_balance'] is False:
+        print(f"\n  WARNING: Insufficient balance!")
+        print(f"  Have: {result['token_in']['balance']:.6f} {result['token_in']['symbol']}")
+        print(f"  Need: {args.amount} {result['token_in']['symbol']}")
+    elif result['token_in']['sufficient_balance'] is None:
+        print(f"\n  Note: Balance check skipped (no wallet configured)")
+
+    print("\n" + "=" * 60)
+
+    print("\n" + json.dumps(result, indent=2, default=str))
+    filepath = save_result(f"univ4_quote_{result['token_in']['symbol']}_{result['token_out']['symbol']}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_swap(args):
+    """Execute V4 token swap"""
+    manager = V4SwapManager()
+
+    dry_run = getattr(args, 'dry_run', False)
+
+    if dry_run:
+        print(f"[DRY RUN] Simulating V4 swap: {args.amount} {args.token_in} -> {args.token_out}")
+    else:
+        print(f"V4 Swapping {args.amount} {args.token_in} -> {args.token_out}")
+    print(f"Pool: {args.pool}, Slippage: {args.slippage} bps")
+
+    result = manager.swap(
+        token_in=args.token_in,
+        token_out=args.token_out,
+        pool_name=args.pool,
+        amount_in=args.amount,
+        slippage_bps=args.slippage,
+        deadline_minutes=args.deadline,
+        dry_run=dry_run,
+    )
+
+    if dry_run:
+        print("\n" + "=" * 60)
+        print("DRY RUN RESULT - No transaction sent")
+        print("=" * 60)
+        print(f"\n  Would swap: {result['token_in']['amount']} {result['token_in']['symbol']}")
+        print(f"  Would receive: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+        print(f"  Minimum output: {result['token_out']['min_amount']:.6f} {result['token_out']['symbol']}")
+        print(f"  Price: {result['price']['formatted']}")
+
+        if result['token_in'].get('is_native_eth'):
+            print(f"\n  Using native ETH (no WETH wrapping)")
+
+        print(f"\n  Gas estimate: {result['gas']['estimate']} units")
+        print(f"  Gas cost: ~{result['gas']['cost_eth']:.6f} ETH")
+
+        if not result['token_in'].get('sufficient_balance', True):
+            print(f"\n  WARNING: Insufficient balance!")
+
+        print("\n" + "=" * 60)
+        print("\nTo execute this swap, run without --dry-run")
+    else:
+        print(f"\nSuccess!")
+        print(f"Tx: {result['tx_hash']}")
+        print(f"Block: {result['block']}")
+        print(f"In:  {result['token_in']['amount']} {result['token_in']['symbol']}")
+        if result['token_out']['expected_amount']:
+            print(f"Out: ~{result['token_out']['expected_amount']:.6f} {result['token_out']['symbol']}")
+        print(f"Gas used: {result['gas_used']}")
+
+    if dry_run:
+        filepath = save_result(f"univ4_swap_dryrun_{result['token_in']['symbol']}_{result['token_out']['symbol']}.json", result)
+    else:
+        filepath = save_result(f"univ4_swap_{result['tx_hash'][:10]}.json", result)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_add_liquidity(args):
+    """Add liquidity to V4 pool"""
+    manager = V4LiquidityManager()
+
+    print(f"V4 Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
+    print(f"Fee: {args.fee}, Ticks: {args.tick_lower} to {args.tick_upper}")
+
+    result = manager.add_liquidity(
+        token0=args.token0,
+        token1=args.token1,
+        fee=args.fee,
+        tick_lower=args.tick_lower,
+        tick_upper=args.tick_upper,
+        amount0=args.amount0,
+        amount1=args.amount1,
+        slippage_bps=int(args.slippage * 100),
+    )
+
+    print(f"\nSuccess! Token ID: {result['token_id']}")
+    print(f"Tx: {result['receipt'].transactionHash.hex()}")
+    if result.get('uses_native_eth'):
+        print(f"Used native ETH (no WETH wrapping)")
+
+    save_data = {
+        "token_id": result["token_id"],
+        "tx_hash": result["receipt"].transactionHash.hex(),
+        "block": result["receipt"].blockNumber,
+        "token0": result["token0"],
+        "token1": result["token1"],
+        "tick_lower": result["tick_lower"],
+        "tick_upper": result["tick_upper"],
+        "uses_native_eth": result.get("uses_native_eth", False),
+    }
+    filepath = save_result(f"univ4_add_liquidity_{result['token_id']}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_add_liquidity_range(args):
+    """Add V4 liquidity using percentage range"""
+    manager = V4LiquidityManager()
+
+    print(f"V4 Adding liquidity: {args.amount0} {args.token0} + {args.amount1} {args.token1}")
+    print(f"Fee: {args.fee}, Range: {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}%")
+
+    result = manager.add_liquidity_range(
+        token0=args.token0,
+        token1=args.token1,
+        fee=args.fee,
+        percent_lower=args.percent_lower,
+        percent_upper=args.percent_upper,
+        amount0=args.amount0,
+        amount1=args.amount1,
+        slippage_bps=int(args.slippage * 100),
+    )
+
+    print(f"\nSuccess! Token ID: {result['token_id']}")
+    print(f"Tx: {result['receipt'].transactionHash.hex()}")
+
+    save_data = {
+        "token_id": result["token_id"],
+        "tx_hash": result["receipt"].transactionHash.hex(),
+        "block": result["receipt"].blockNumber,
+        "token0": result["token0"],
+        "token1": result["token1"],
+        "tick_lower": result["tick_lower"],
+        "tick_upper": result["tick_upper"],
+        "current_price": result["current_price"],
+        "price_lower": result["price_lower"],
+        "price_upper": result["price_upper"],
+        "uses_native_eth": result.get("uses_native_eth", False),
+    }
+    filepath = save_result(f"univ4_add_liquidity_{result['token_id']}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_remove_liquidity(args):
+    """Remove liquidity from V4 position"""
+    manager = V4LiquidityManager()
+
+    print(f"Removing {args.percentage}% liquidity from V4 position {args.token_id}")
+
+    result = manager.remove_liquidity(
+        token_id=args.token_id,
+        percentage=args.percentage,
+        collect_fees=args.collect_fees,
+        burn=args.burn,
+    )
+
+    print(f"\nSuccess!")
+    print(f"Decrease tx: {result['decrease_receipt'].transactionHash.hex()}")
+    if "collect_receipt" in result:
+        print(f"Collect tx: {result['collect_receipt'].transactionHash.hex()}")
+    if "burn_receipt" in result:
+        print(f"Burn tx: {result['burn_receipt'].transactionHash.hex()}")
+
+    save_data = {
+        "token_id": result["token_id"],
+        "percentage": args.percentage,
+        "decrease_tx": result["decrease_receipt"].transactionHash.hex(),
+        "collect_tx": result.get("collect_receipt", {}).transactionHash.hex() if "collect_receipt" in result else None,
+        "burn_tx": result.get("burn_receipt", {}).transactionHash.hex() if "burn_receipt" in result else None,
+    }
+    filepath = save_result(f"univ4_remove_liquidity_{args.token_id}.json", save_data)
+    print(f"Saved to {filepath}", file=sys.stderr)
+
+
+def cmd_v4_calculate_amounts(args):
+    """Calculate optimal token amounts for V4 position"""
+    from ..core.connection import Web3Manager
+    web3_manager = Web3Manager(require_signer=False)
+    manager = V4LiquidityManager(manager=web3_manager)
+
+    if hasattr(args, 'percent_lower'):
+        result = manager.calculate_optimal_amounts_range(
+            token0=args.token0,
+            token1=args.token1,
+            fee=args.fee,
+            percent_lower=args.percent_lower,
+            percent_upper=args.percent_upper,
+            amount0_desired=args.amount0 if args.amount0 else None,
+            amount1_desired=args.amount1 if args.amount1 else None,
+        )
+        print(f"V4 calculating amounts for {args.percent_lower*100:.1f}% to {args.percent_upper*100:.1f}% range")
+    else:
+        result = manager.calculate_optimal_amounts(
+            token0=args.token0,
+            token1=args.token1,
+            fee=args.fee,
+            tick_lower=args.tick_lower,
+            tick_upper=args.tick_upper,
+            amount0_desired=args.amount0 if args.amount0 else None,
+            amount1_desired=args.amount1 if args.amount1 else None,
+        )
+        print(f"V4 calculating amounts for tick range {args.tick_lower} to {args.tick_upper}")
+
+    print("=" * 70)
+    print(f"\nV4 POSITION DETAILS")
+    print(f"  Pool: {result['token0']['symbol']}/{result['token1']['symbol']} ({args.fee/10000:.2f}% fee)")
+    print(f"  Current Price: {result['current_price']:.6f}")
+    print(f"  Price Range: {result['price_lower']:.6f} to {result['price_upper']:.6f}")
+    print(f"  Position Status: {result['position_type'].replace('_', ' ').title()}")
+
+    if result['token0'].get('is_native_eth') or result['token1'].get('is_native_eth'):
+        print(f"\n  Native ETH: Yes (no WETH wrapping needed)")
+
+    print(f"\nOPTIMAL AMOUNTS")
+    print(f"  {result['token0']['symbol']}: {result['token0']['amount']:.6f}")
+    print(f"  {result['token1']['symbol']}: {result['token1']['amount']:.6f}")
+
+    print("\n" + "=" * 70)
+
+    # Remove pool_key from result for JSON serialization (it's a dataclass)
+    result_json = {k: v for k, v in result.items() if k != 'pool_key'}
+    print("\n" + json.dumps(result_json, indent=2, default=str))
+    filename = f"univ4_calculate_{result['token0']['symbol']}_{result['token1']['symbol']}.json"
+    filepath = save_result(filename, result_json)
+    print(f"\nSaved to {filepath}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="amm-trading",
@@ -717,6 +1026,110 @@ def main():
     lp_quote_parser.add_argument("--amount1", type=float, help="Amount of token1 you have")
     lp_quote_parser.set_defaults(func=cmd_lp_quote)
 
+    # ══════════════════════════════════════════════════════════════════
+    # UNISWAP V4 COMMANDS
+    # ══════════════════════════════════════════════════════════════════
+
+    univ4_parser = subparsers.add_parser("univ4", help="Uniswap V4 operations (native ETH support)")
+    univ4_sub = univ4_parser.add_subparsers(dest="univ4_command")
+
+    # ── univ4 query ────────────────────────────────────────────────────
+    univ4_query_parser = univ4_sub.add_parser("query", help="Query Uniswap V4 data")
+    univ4_query_sub = univ4_query_parser.add_subparsers(dest="univ4_query_type")
+
+    # univ4 query pools
+    v4_pools_parser = univ4_query_sub.add_parser("pools", help="Query V4 pool info")
+    v4_pools_parser.add_argument("--name", help="Specific pool name (e.g., ETH_USDC_30)")
+    v4_pools_parser.add_argument("--refresh-cache", action="store_true", help="Force refresh cache")
+    v4_pools_parser.set_defaults(func=cmd_v4_query_pools)
+
+    # univ4 query position
+    v4_pos_parser = univ4_query_sub.add_parser("position", help="Query position by NFT token ID")
+    v4_pos_parser.add_argument("token_id", type=int, help="Position NFT token ID")
+    v4_pos_parser.set_defaults(func=cmd_v4_query_position)
+
+    # univ4 query positions
+    v4_positions_parser = univ4_query_sub.add_parser("positions", help="Query all V4 positions for address")
+    v4_positions_parser.add_argument("--address", help="Address to query (default: wallet.env)")
+    v4_positions_parser.set_defaults(func=cmd_v4_query_positions)
+
+    # ── univ4 calculate ────────────────────────────────────────────────
+    univ4_calc_parser = univ4_sub.add_parser("calculate", help="Calculate optimal token amounts")
+    univ4_calc_sub = univ4_calc_parser.add_subparsers(dest="v4_calc_type")
+
+    # univ4 calculate amounts (tick-based)
+    v4_calc_ticks_parser = univ4_calc_sub.add_parser("amounts", help="Calculate amounts for tick range")
+    v4_calc_ticks_parser.add_argument("token0", help="Token0 symbol or address (use ETH for native)")
+    v4_calc_ticks_parser.add_argument("token1", help="Token1 symbol or address")
+    v4_calc_ticks_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    v4_calc_ticks_parser.add_argument("tick_lower", type=int, help="Lower tick")
+    v4_calc_ticks_parser.add_argument("tick_upper", type=int, help="Upper tick")
+    v4_calc_ticks_parser.add_argument("--amount0", type=float, help="Desired amount of token0")
+    v4_calc_ticks_parser.add_argument("--amount1", type=float, help="Desired amount of token1")
+    v4_calc_ticks_parser.set_defaults(func=cmd_v4_calculate_amounts)
+
+    # univ4 calculate amounts-range (percentage-based)
+    v4_calc_range_parser = univ4_calc_sub.add_parser("amounts-range", help="Calculate amounts for percentage range")
+    v4_calc_range_parser.add_argument("token0", help="Token0 symbol or address (use ETH for native)")
+    v4_calc_range_parser.add_argument("token1", help="Token1 symbol or address")
+    v4_calc_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    v4_calc_range_parser.add_argument("percent_lower", type=float, help="Lower percentage (e.g., -0.05)")
+    v4_calc_range_parser.add_argument("percent_upper", type=float, help="Upper percentage (e.g., 0.05)")
+    v4_calc_range_parser.add_argument("--amount0", type=float, help="Desired amount of token0")
+    v4_calc_range_parser.add_argument("--amount1", type=float, help="Desired amount of token1")
+    v4_calc_range_parser.set_defaults(func=cmd_v4_calculate_amounts)
+
+    # ── univ4 add ──────────────────────────────────────────────────────
+    v4_add_parser = univ4_sub.add_parser("add", help="Add liquidity (supports native ETH)")
+    v4_add_parser.add_argument("token0", help="Token0 symbol (use ETH for native)")
+    v4_add_parser.add_argument("token1", help="Token1 symbol or address")
+    v4_add_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    v4_add_parser.add_argument("tick_lower", type=int, help="Lower tick")
+    v4_add_parser.add_argument("tick_upper", type=int, help="Upper tick")
+    v4_add_parser.add_argument("amount0", type=float, help="Amount of token0")
+    v4_add_parser.add_argument("amount1", type=float, help="Amount of token1")
+    v4_add_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
+    v4_add_parser.set_defaults(func=cmd_v4_add_liquidity)
+
+    # ── univ4 add-range ────────────────────────────────────────────────
+    v4_add_range_parser = univ4_sub.add_parser("add-range", help="Add liquidity using percentage range")
+    v4_add_range_parser.add_argument("token0", help="Token0 symbol (use ETH for native)")
+    v4_add_range_parser.add_argument("token1", help="Token1 symbol or address")
+    v4_add_range_parser.add_argument("fee", type=int, help="Fee tier (500, 3000, 10000)")
+    v4_add_range_parser.add_argument("percent_lower", type=float, help="Lower percentage (e.g., -0.05)")
+    v4_add_range_parser.add_argument("percent_upper", type=float, help="Upper percentage (e.g., 0.05)")
+    v4_add_range_parser.add_argument("amount0", type=float, help="Amount of token0")
+    v4_add_range_parser.add_argument("amount1", type=float, help="Amount of token1")
+    v4_add_range_parser.add_argument("--slippage", type=float, default=0.5, help="Slippage tolerance in percent")
+    v4_add_range_parser.set_defaults(func=cmd_v4_add_liquidity_range)
+
+    # ── univ4 remove ───────────────────────────────────────────────────
+    v4_remove_parser = univ4_sub.add_parser("remove", help="Remove liquidity")
+    v4_remove_parser.add_argument("token_id", type=int, help="Position token ID")
+    v4_remove_parser.add_argument("percentage", type=float, help="Percentage to remove")
+    v4_remove_parser.add_argument("--collect-fees", action="store_true", help="Collect fees")
+    v4_remove_parser.add_argument("--burn", action="store_true", help="Burn position NFT")
+    v4_remove_parser.set_defaults(func=cmd_v4_remove_liquidity)
+
+    # ── univ4 swap ─────────────────────────────────────────────────────
+    v4_swap_parser = univ4_sub.add_parser("swap", help="Swap tokens (supports native ETH)")
+    v4_swap_parser.add_argument("token_in", help="Token to send (use ETH for native)")
+    v4_swap_parser.add_argument("token_out", help="Token to receive")
+    v4_swap_parser.add_argument("pool", help="Pool name (e.g., ETH_USDC_30)")
+    v4_swap_parser.add_argument("amount", type=float, help="Amount of token_in to swap")
+    v4_swap_parser.add_argument("--slippage", type=int, default=50, help="Slippage in basis points")
+    v4_swap_parser.add_argument("--deadline", type=int, default=30, help="Deadline in minutes")
+    v4_swap_parser.add_argument("--dry-run", action="store_true", help="Simulate without executing")
+    v4_swap_parser.set_defaults(func=cmd_v4_swap)
+
+    # ── univ4 quote ────────────────────────────────────────────────────
+    v4_quote_parser = univ4_sub.add_parser("quote", help="Get swap quote")
+    v4_quote_parser.add_argument("token_in", help="Token to send (use ETH for native)")
+    v4_quote_parser.add_argument("token_out", help="Token to receive")
+    v4_quote_parser.add_argument("pool", help="Pool name (e.g., ETH_USDC_30)")
+    v4_quote_parser.add_argument("amount", type=float, help="Amount of token_in to quote")
+    v4_quote_parser.set_defaults(func=cmd_v4_quote)
+
     # ── Parse and dispatch ─────────────────────────────────────────────
     args = parser.parse_args()
 
@@ -741,6 +1154,17 @@ def main():
             sys.exit(1)
         if args.univ3_command == "calculate" and not args.calc_type:
             univ3_calc_parser.print_help()
+            sys.exit(1)
+
+    if args.command == "univ4":
+        if not args.univ4_command:
+            univ4_parser.print_help()
+            sys.exit(1)
+        if args.univ4_command == "query" and not args.univ4_query_type:
+            univ4_query_parser.print_help()
+            sys.exit(1)
+        if args.univ4_command == "calculate" and not getattr(args, 'v4_calc_type', None):
+            univ4_calc_parser.print_help()
             sys.exit(1)
 
     try:
