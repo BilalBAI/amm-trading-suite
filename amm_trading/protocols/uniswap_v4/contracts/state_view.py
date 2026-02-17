@@ -12,6 +12,10 @@ class StateView:
 
     StateView provides efficient read-only access to pool state
     without requiring write access to PoolManager.
+
+    Note: The deployed StateView contract takes bytes32 poolId
+    (not PoolKey tuple) for all query functions. This wrapper
+    handles the conversion from PoolKey to poolId automatically.
     """
 
     def __init__(self, manager):
@@ -24,6 +28,10 @@ class StateView:
         self.address = manager.checksum(self.config.state_view_address)
         self.contract = manager.get_contract(self.address, "stateView")
         self._slot0_cache = {}
+
+    def _get_pool_id(self, pool_key: PoolKey) -> bytes:
+        """Compute bytes32 pool ID from PoolKey."""
+        return compute_pool_id(pool_key)
 
     def get_slot0(self, pool_key: PoolKey, use_cache: bool = False):
         """
@@ -42,7 +50,8 @@ class StateView:
             return self._slot0_cache[cache_key]
 
         try:
-            result = self.contract.functions.getSlot0(pool_key.to_tuple()).call()
+            pool_id = self._get_pool_id(pool_key)
+            result = self.contract.functions.getSlot0(pool_id).call()
             slot0 = {
                 "sqrt_price_x96": result[0],
                 "tick": result[1],
@@ -66,7 +75,8 @@ class StateView:
             Total liquidity in the pool
         """
         try:
-            return self.contract.functions.getLiquidity(pool_key.to_tuple()).call()
+            pool_id = self._get_pool_id(pool_key)
+            return self.contract.functions.getLiquidity(pool_id).call()
         except Exception as e:
             raise PoolError(f"Failed to get liquidity: {e}")
 
@@ -82,8 +92,9 @@ class StateView:
             dict with liquidityGross, liquidityNet, feeGrowthOutside0X128, feeGrowthOutside1X128
         """
         try:
+            pool_id = self._get_pool_id(pool_key)
             result = self.contract.functions.getTickInfo(
-                pool_key.to_tuple(),
+                pool_id,
                 tick
             ).call()
             return {

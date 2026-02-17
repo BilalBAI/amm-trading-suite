@@ -24,17 +24,7 @@
     "stateView": [
         {
             "inputs": [
-                {
-                    "components": [
-                        {"name": "currency0", "type": "address"},
-                        {"name": "currency1", "type": "address"},
-                        {"name": "fee", "type": "uint24"},
-                        {"name": "tickSpacing", "type": "int24"},
-                        {"name": "hooks", "type": "address"}
-                    ],
-                    "name": "poolKey",
-                    "type": "tuple"
-                }
+                {"name": "poolId", "type": "bytes32"}
             ],
             "name": "getSlot0",
             "outputs": [
@@ -48,17 +38,7 @@
         },
         {
             "inputs": [
-                {
-                    "components": [
-                        {"name": "currency0", "type": "address"},
-                        {"name": "currency1", "type": "address"},
-                        {"name": "fee", "type": "uint24"},
-                        {"name": "tickSpacing", "type": "int24"},
-                        {"name": "hooks", "type": "address"}
-                    ],
-                    "name": "poolKey",
-                    "type": "tuple"
-                }
+                {"name": "poolId", "type": "bytes32"}
             ],
             "name": "getLiquidity",
             "outputs": [{"name": "", "type": "uint128"}],
@@ -84,17 +64,7 @@
         },
         {
             "inputs": [
-                {
-                    "components": [
-                        {"name": "currency0", "type": "address"},
-                        {"name": "currency1", "type": "address"},
-                        {"name": "fee", "type": "uint24"},
-                        {"name": "tickSpacing", "type": "int24"},
-                        {"name": "hooks", "type": "address"}
-                    ],
-                    "name": "poolKey",
-                    "type": "tuple"
-                },
+                {"name": "poolId", "type": "bytes32"},
                 {"name": "tick", "type": "int24"}
             ],
             "name": "getTickInfo",
