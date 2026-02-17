@@ -123,7 +123,17 @@ amm-trading univ3 query position 1157630
 amm-trading univ3 query positions
 amm-trading univ3 query positions --address 0x123...
 
-# Calculate optimal token amounts before adding liquidity
+# Get swap quote without executing (no wallet needed)
+amm-trading univ3 quote WETH USDT WETH_USDT_30 0.1
+
+# Get LP quote - calculate tokens needed for a liquidity position
+amm-trading univ3 lp-quote WETH USDT 3000 -0.05 0.05 --amount0 0.1
+amm-trading univ3 lp-quote WETH USDT 3000 -0.05 0.05 --amount1 300
+
+# Calculate optimal token amounts (tick-based)
+amm-trading univ3 calculate amounts WETH USDT 3000 -887220 887220 --amount0 0.1
+
+# Calculate optimal token amounts (percentage range)
 amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount0 0.1
 amm-trading univ3 calculate amounts-range WETH USDT 3000 -0.05 0.05 --amount1 300
 ```
@@ -147,6 +157,7 @@ amm-trading univ3 remove 1157630 100 --collect-fees --burn
 # Migrate liquidity to new range
 amm-trading univ3 migrate 1157630 -887220 887220
 amm-trading univ3 migrate 1157630 -887220 887220 --percentage 50
+amm-trading univ3 migrate 1157630 -887220 887220 --slippage 1.0 --no-collect-fees --burn-old
 ```
 
 #### Uniswap V3 - Swaps
@@ -155,6 +166,7 @@ amm-trading univ3 migrate 1157630 -887220 887220 --percentage 50
 amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1
 amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --slippage 100
 amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --deadline 60
+amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --dry-run    # Simulate without executing
 ```
 
 #### Uniswap V4 - Native ETH Support
@@ -438,16 +450,25 @@ All CLI commands save results to the `results/` folder:
 |---------|-------------|
 | `query balances` | `results/balances_<address>.json` |
 | `wallet generate` | `results/wallet.json` |
+| `wrap` | `results/wrap_<tx_hash>.json` |
+| `unwrap` | `results/unwrap_<tx_hash>.json` |
 | `univ3 query pools` | `results/univ3_pools.json` |
 | `univ3 query position <id>` | `results/univ3_position_<id>.json` |
 | `univ3 query positions` | `results/positions_<address>.json` |
+| `univ3 quote ...` | `results/quote_<token_in>_<token_out>.json` |
+| `univ3 lp-quote ...` | `results/lp_quote_<token0>_<token1>.json` |
+| `univ3 calculate ...` | `results/calculate_amounts_<token0>_<token1>.json` |
 | `univ3 add ...` | `results/add_liquidity_<id>.json` |
 | `univ3 remove ...` | `results/remove_liquidity_<id>.json` |
 | `univ3 migrate ...` | `results/migrate_<old>_to_<new>.json` |
 | `univ3 swap ...` | `results/swap_<tx_hash>.json` |
 | `univ4 query pools` | `results/univ4_pools.json` |
 | `univ4 query position <id>` | `results/univ4_position_<id>.json` |
+| `univ4 query positions` | `results/univ4_positions_<address>.json` |
+| `univ4 quote ...` | `results/univ4_quote_<token_in>_<token_out>.json` |
+| `univ4 calculate ...` | `results/univ4_calculate_<token0>_<token1>.json` |
 | `univ4 add ...` | `results/univ4_add_liquidity_<id>.json` |
+| `univ4 remove ...` | `results/univ4_remove_liquidity_<id>.json` |
 | `univ4 swap ...` | `results/univ4_swap_<tx_hash>.json` |
 
 ## Documentation

@@ -873,7 +873,31 @@ def cmd_v4_calculate_amounts(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="amm-trading",
-        description="AMM trading toolkit (multi-protocol)",
+        description="AMM Trading Toolkit - Interact with Uniswap V3 & V4 on Ethereum",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""commands overview:
+  query       Query ETH/token balances
+  wrap/unwrap Convert between ETH and WETH
+  wallet      Generate new wallets
+  univ3       Uniswap V3 operations (query, quote, add/remove liquidity, swap)
+  univ4       Uniswap V4 operations (native ETH support, no WETH wrapping)
+
+examples:
+  amm-trading query balances                                          # Check wallet balances
+  amm-trading univ3 quote WETH USDT WETH_USDT_30 0.1                 # Get swap quote
+  amm-trading univ3 lp-quote WETH USDT 3000 -0.05 0.05 --amount0 1   # LP position quote
+  amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --dry-run        # Simulate a swap
+  amm-trading univ3 add-range WETH USDT 3000 -0.05 0.05 0.1 300      # Add liquidity (-5% to +5%)
+  amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0                    # V4 swap with native ETH
+  amm-trading univ4 query pools                                       # List V4 pools
+
+configuration:
+  RPC_URL      Set in .env file
+  wallet       Set PUBLIC_KEY and PRIVATE_KEY in wallet.env
+  tokens       config/tokens.json
+  gas          config/gas.json
+  pools        config/uniswap_v3/pools.json, config/uniswap_v4/pools.json
+""",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command")
 
@@ -904,7 +928,30 @@ def main():
     wallet_gen_parser.set_defaults(func=cmd_wallet_generate)
 
     # ── Top-level: univ3 (Uniswap V3 operations) ──────────────────────
-    univ3_parser = subparsers.add_parser("univ3", help="Uniswap V3 operations")
+    univ3_parser = subparsers.add_parser(
+        "univ3",
+        help="Uniswap V3 operations",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Uniswap V3 operations - query pools/positions, add/remove liquidity, swap tokens",
+        epilog="""subcommands:
+  query       Query pools, positions
+  calculate   Calculate optimal token amounts for LP
+  quote       Get swap quote (read-only, no wallet needed)
+  lp-quote    Get LP position quote (read-only, no wallet needed)
+  add         Add liquidity using tick range
+  add-range   Add liquidity using percentage range (e.g., -5% to +5%)
+  remove      Remove liquidity from a position
+  migrate     Migrate liquidity to a new tick range
+  swap        Execute a token swap
+
+examples:
+  amm-trading univ3 query pools
+  amm-trading univ3 quote WETH USDT WETH_USDT_30 0.1
+  amm-trading univ3 lp-quote WETH USDT 3000 -0.05 0.05 --amount0 0.1
+  amm-trading univ3 swap WETH USDT WETH_USDT_30 0.1 --dry-run
+  amm-trading univ3 add-range WETH USDT 3000 -0.05 0.05 0.1 300
+""",
+    )
     univ3_sub = univ3_parser.add_subparsers(dest="univ3_command")
 
     # ── univ3 query ────────────────────────────────────────────────────
@@ -1030,7 +1077,27 @@ def main():
     # UNISWAP V4 COMMANDS
     # ══════════════════════════════════════════════════════════════════
 
-    univ4_parser = subparsers.add_parser("univ4", help="Uniswap V4 operations (native ETH support)")
+    univ4_parser = subparsers.add_parser(
+        "univ4",
+        help="Uniswap V4 operations (native ETH support)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Uniswap V4 operations - native ETH support, no WETH wrapping needed",
+        epilog="""subcommands:
+  query       Query pools, positions
+  calculate   Calculate optimal token amounts for LP
+  quote       Get swap quote (read-only, no wallet needed)
+  add         Add liquidity using tick range (supports native ETH)
+  add-range   Add liquidity using percentage range (supports native ETH)
+  remove      Remove liquidity from a position
+  swap        Execute a token swap (supports native ETH)
+
+examples:
+  amm-trading univ4 query pools
+  amm-trading univ4 quote ETH USDC ETH_USDC_30 1.0
+  amm-trading univ4 swap ETH USDC ETH_USDC_30 1.0 --dry-run
+  amm-trading univ4 add-range ETH USDC 3000 -0.05 0.05 1.0 2000
+""",
+    )
     univ4_sub = univ4_parser.add_subparsers(dest="univ4_command")
 
     # ── univ4 query ────────────────────────────────────────────────────
