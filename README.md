@@ -4,16 +4,32 @@ A Python package for interacting with AMM protocols on Ethereum. Supports **Unis
 
 ## Installation
 
+### Using uv (recommended)
+
 ```bash
-# Clone the repository
 git clone https://github.com/BilalBAI/amm-trading-suite.git
 cd amm-trading-suite
+uv sync
+```
 
-# Create virtual environment
+This creates a `.venv/` and installs all dependencies from the lockfile. Run commands with:
+```bash
+uv run amm-trading --help
+```
+
+Or activate the venv manually:
+```bash
+source .venv/bin/activate
+amm-trading --help
+```
+
+### Using pip + venv
+
+```bash
+git clone https://github.com/BilalBAI/amm-trading-suite.git
+cd amm-trading-suite
 python3 -m venv venv
 source venv/bin/activate
-
-# Install the package
 pip install -e .
 ```
 
